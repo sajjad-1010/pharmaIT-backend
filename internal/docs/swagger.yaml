@@ -1,0 +1,1150 @@
+basePath: /api/v1
+definitions:
+  catalog.UpsertMedicineInput:
+    properties:
+      atc_code:
+        type: string
+      brand_name:
+        type: string
+      form:
+        type: string
+      generic_name:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      manufacturer_id:
+        type: string
+      pack_size:
+        type: string
+      strength:
+        type: string
+    type: object
+  model.UserRole:
+    enum:
+    - PHARMACY
+    - WHOLESALER
+    - MANUFACTURER
+    - ADMIN
+    type: string
+    x-enum-varnames:
+    - UserRolePharmacy
+    - UserRoleWholesaler
+    - UserRoleManufacturer
+    - UserRoleAdmin
+  offers.UpsertOfferInput:
+    properties:
+      available_qty:
+        type: integer
+      currency:
+        type: string
+      delivery_eta_hours:
+        type: integer
+      display_price:
+        type: string
+      expiry_date:
+        type: string
+      is_active:
+        type: boolean
+      medicine_id:
+        type: string
+      min_order_qty:
+        type: integer
+    type: object
+  payments.WebhookInput:
+    properties:
+      invoice_id:
+        type: string
+      status:
+        type: string
+      transaction_id:
+        type: string
+    type: object
+  response.ErrorEnvelope:
+    properties:
+      error:
+        properties:
+          code:
+            type: string
+          details: {}
+          message:
+            type: string
+        type: object
+    type: object
+  users.LoginRequest:
+    properties:
+      identifier:
+        type: string
+      password:
+        type: string
+    type: object
+  users.RegisterProfile:
+    properties:
+      address:
+        type: string
+      city:
+        type: string
+      country:
+        type: string
+      license_no:
+        type: string
+      name:
+        type: string
+      registration_no:
+        type: string
+    type: object
+  users.RegisterRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      phone:
+        type: string
+      profile:
+        $ref: '#/definitions/users.RegisterProfile'
+      role:
+        $ref: '#/definitions/model.UserRole'
+    type: object
+info:
+  contact: {}
+  description: Backend API for PharmaLink B2B marketplace
+  title: PharmaLink API
+  version: "1.0"
+paths:
+  /admin/medicines/:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: medicine payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/catalog.UpsertMedicineInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Create medicine (Admin)
+      tags:
+      - catalog
+  /admin/medicines/{id}:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: medicine id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: medicine payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/catalog.UpsertMedicineInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Update medicine (Admin)
+      tags:
+      - catalog
+  /admin/users:
+    get:
+      parameters:
+      - description: role
+        in: query
+        name: role
+        type: string
+      - description: status
+        in: query
+        name: status
+        type: string
+      - description: limit
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: List users (Admin)
+      tags:
+      - admin
+  /admin/users/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: user id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: status payload
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Update user status (Admin)
+      tags:
+      - admin
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Login with email/phone and password
+      parameters:
+      - description: login payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/users.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      summary: Login
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Logout
+      tags:
+      - auth
+  /auth/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Current user profile
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: refresh payload
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      summary: Refresh access token
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Register PHARMACY/WHOLESALER/MANUFACTURER user with profile
+      parameters:
+      - description: register payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/users.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      summary: Register new user
+      tags:
+      - auth
+  /discount-campaigns/:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: List discount campaigns (Wholesaler)
+      tags:
+      - discounts
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: campaign payload
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Create discount campaign (Wholesaler)
+      tags:
+      - discounts
+  /discount-campaigns/{id}/items:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: campaign id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: discount item payload
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Add item to discount campaign (Wholesaler)
+      tags:
+      - discounts
+  /inventory/movements:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: movement payload
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Add inventory movement (Wholesaler)
+      tags:
+      - inventory
+  /inventory/stock:
+    get:
+      parameters:
+      - description: medicine id
+        in: query
+        name: medicine_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Get current stock by medicine (Wholesaler)
+      tags:
+      - inventory
+  /manufacturer-requests:
+    get:
+      parameters:
+      - description: status
+        in: query
+        name: status
+        type: string
+      - description: limit
+        in: query
+        name: limit
+        type: integer
+      - description: cursor
+        in: query
+        name: cursor
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: List manufacturer requests
+      tags:
+      - manufacturer
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: manufacturer request payload
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Create manufacturer request (Wholesaler)
+      tags:
+      - manufacturer
+  /manufacturer-requests/{id}/quotes:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: manufacturer request id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: quote payload
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Create manufacturer quote (Manufacturer)
+      tags:
+      - manufacturer
+  /medicines:
+    get:
+      parameters:
+      - description: search query
+        in: query
+        name: query
+        type: string
+      - description: limit
+        in: query
+        name: limit
+        type: integer
+      - description: cursor
+        in: query
+        name: cursor
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      summary: List/search medicines
+      tags:
+      - catalog
+  /offers:
+    get:
+      parameters:
+      - description: medicine id
+        in: query
+        name: medicine_id
+        type: string
+      - description: limit
+        in: query
+        name: limit
+        type: integer
+      - description: cursor
+        in: query
+        name: cursor
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      summary: List offers
+      tags:
+      - offers
+  /offers/:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: offer payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/offers.UpsertOfferInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Create offer (Wholesaler)
+      tags:
+      - offers
+  /offers/{id}:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: offer id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: offer payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/offers.UpsertOfferInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Update offer (Wholesaler)
+      tags:
+      - offers
+  /orders/:
+    get:
+      parameters:
+      - description: limit
+        in: query
+        name: limit
+        type: integer
+      - description: cursor
+        in: query
+        name: cursor
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: List orders
+      tags:
+      - orders
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: order payload
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Create order (Pharmacy)
+      tags:
+      - orders
+  /orders/{id}:
+    get:
+      parameters:
+      - description: order id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Get order by id
+      tags:
+      - orders
+  /orders/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: order id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: status payload
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Update order status
+      tags:
+      - orders
+  /payments/access:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Get current access pass
+      tags:
+      - payments
+  /payments/invoice:
+    post:
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Create payment invoice
+      tags:
+      - payments
+  /payments/webhook:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: HMAC-SHA256 signature (hex)
+        in: header
+        name: X-Signature
+        required: true
+        type: string
+      - description: webhook payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/payments.WebhookInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      summary: Payment webhook callback
+      tags:
+      - payments
+  /rare-requests:
+    get:
+      parameters:
+      - description: status
+        in: query
+        name: status
+        type: string
+      - description: limit
+        in: query
+        name: limit
+        type: integer
+      - description: cursor
+        in: query
+        name: cursor
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: List rare requests
+      tags:
+      - rare
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: rare request payload
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Create rare request (Pharmacy)
+      tags:
+      - rare
+  /rare-requests/{id}/bids:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: rare request id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: rare bid payload
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Create rare bid (Wholesaler)
+      tags:
+      - rare
+  /rare-requests/bids/{id}/select:
+    post:
+      parameters:
+      - description: rare bid id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Select rare bid (Pharmacy)
+      tags:
+      - rare
+  /stream/offers:
+    get:
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: SSE stream
+          schema:
+            type: string
+      summary: SSE stream for offer and inventory updates
+      tags:
+      - stream
+schemes:
+- http
+- https
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

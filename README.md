@@ -22,7 +22,7 @@ See full run instructions in [docs/RUN.md](docs/RUN.md).
 
 Generate docs:
 ```bash
-make swagger
+go run github.com/swaggo/swag/cmd/swag@latest init -g cmd/api/main.go -o internal/docs
 ```
 
 ## Migration Commands

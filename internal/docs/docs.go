@@ -15,6 +15,194 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/medicine-candidates/": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List medicine candidates waiting for review (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "candidate status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "limit",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/catalog.ListMedicineCandidatesResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/medicine-candidates/{id}/approve": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Approve medicine candidate (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "medicine candidate id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "approve payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/catalog.ApproveMedicineCandidateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/catalog.ApproveMedicineCandidateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorEnvelope"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/medicine-candidates/{id}/reject": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Reject medicine candidate (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "medicine candidate id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "reject payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/catalog.RejectMedicineCandidateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/catalog.MedicineCandidateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorEnvelope"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/medicines/": {
             "post": {
                 "security": [
@@ -841,6 +1029,62 @@ const docTemplate = `{
                 }
             }
         },
+        "/medicine-candidates/": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "catalog"
+                ],
+                "summary": "Submit new medicine candidate for admin review (Wholesaler)",
+                "parameters": [
+                    {
+                        "description": "medicine candidate payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/catalog.CreateMedicineCandidateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/catalog.MedicineCandidateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorEnvelope"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/medicines": {
             "get": {
                 "produces": [
@@ -880,6 +1124,56 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/medicines/validate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "catalog"
+                ],
+                "summary": "Validate medicine import row (Wholesaler)",
+                "parameters": [
+                    {
+                        "description": "medicine import payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/catalog.MedicineImportPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/catalog.ImportValidationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorEnvelope"
                         }
@@ -1628,6 +1922,287 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "catalog.ApproveMedicineCandidateRequest": {
+            "type": "object",
+            "properties": {
+                "atc_code": {
+                    "type": "string"
+                },
+                "brand_name": {
+                    "type": "string"
+                },
+                "decision_note": {
+                    "type": "string"
+                },
+                "form": {
+                    "type": "string"
+                },
+                "generic_name": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "manufacturer_id": {
+                    "type": "string"
+                },
+                "medicine_id": {
+                    "type": "string"
+                },
+                "pack_size": {
+                    "type": "string"
+                },
+                "strength": {
+                    "type": "string"
+                }
+            }
+        },
+        "catalog.ApproveMedicineCandidateResponse": {
+            "type": "object",
+            "properties": {
+                "candidate": {
+                    "$ref": "#/definitions/catalog.MedicineCandidateResponse"
+                },
+                "medicine": {
+                    "$ref": "#/definitions/catalog.MedicineSummary"
+                }
+            }
+        },
+        "catalog.CreateMedicineCandidateRequest": {
+            "type": "object",
+            "properties": {
+                "atc_code": {
+                    "type": "string"
+                },
+                "brand_name": {
+                    "type": "string"
+                },
+                "force_submit": {
+                    "type": "boolean"
+                },
+                "form": {
+                    "type": "string"
+                },
+                "generic_name": {
+                    "type": "string"
+                },
+                "pack_size": {
+                    "type": "string"
+                },
+                "strength": {
+                    "type": "string"
+                }
+            }
+        },
+        "catalog.ImportValidationResponse": {
+            "type": "object",
+            "properties": {
+                "candidates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/catalog.MedicineSuggestion"
+                    }
+                },
+                "matched_medicine": {
+                    "$ref": "#/definitions/catalog.MedicineSummary"
+                },
+                "normalized": {
+                    "$ref": "#/definitions/catalog.NormalizedMedicineInput"
+                },
+                "pending_candidate": {
+                    "$ref": "#/definitions/catalog.PendingCandidateSummary"
+                },
+                "status": {
+                    "$ref": "#/definitions/catalog.MatchStatus"
+                },
+                "suggested_medicine": {
+                    "$ref": "#/definitions/catalog.MedicineSuggestion"
+                }
+            }
+        },
+        "catalog.ListMedicineCandidatesResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/catalog.MedicineCandidateResponse"
+                    }
+                }
+            }
+        },
+        "catalog.MatchStatus": {
+            "type": "string",
+            "enum": [
+                "MATCHED",
+                "AMBIGUOUS",
+                "SUGGESTED_MATCH",
+                "NEW_MEDICINE",
+                "PENDING_REVIEW"
+            ],
+            "x-enum-varnames": [
+                "MatchStatusMatched",
+                "MatchStatusAmbiguous",
+                "MatchStatusSuggestedMatch",
+                "MatchStatusNewMedicine",
+                "MatchStatusPendingReview"
+            ]
+        },
+        "catalog.MedicineCandidateResponse": {
+            "type": "object",
+            "properties": {
+                "admin_decision_note": {
+                    "type": "string"
+                },
+                "atc_code": {
+                    "type": "string"
+                },
+                "brand_name": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "form": {
+                    "type": "string"
+                },
+                "generic_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "matched_medicine_id": {
+                    "type": "string"
+                },
+                "pack_size": {
+                    "type": "string"
+                },
+                "reviewed_at": {
+                    "type": "string"
+                },
+                "reviewed_by": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/model.MedicineCandidateStatus"
+                },
+                "strength": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "wholesaler_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "catalog.MedicineImportPayload": {
+            "type": "object",
+            "properties": {
+                "atc_code": {
+                    "type": "string"
+                },
+                "brand_name": {
+                    "type": "string"
+                },
+                "form": {
+                    "type": "string"
+                },
+                "generic_name": {
+                    "type": "string"
+                },
+                "pack_size": {
+                    "type": "string"
+                },
+                "strength": {
+                    "type": "string"
+                }
+            }
+        },
+        "catalog.MedicineSuggestion": {
+            "type": "object",
+            "properties": {
+                "medicine": {
+                    "$ref": "#/definitions/catalog.MedicineSummary"
+                },
+                "score": {
+                    "type": "number"
+                }
+            }
+        },
+        "catalog.MedicineSummary": {
+            "type": "object",
+            "properties": {
+                "atc_code": {
+                    "type": "string"
+                },
+                "brand_name": {
+                    "type": "string"
+                },
+                "form": {
+                    "type": "string"
+                },
+                "generic_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "manufacturer_id": {
+                    "type": "string"
+                },
+                "pack_size": {
+                    "type": "string"
+                },
+                "strength": {
+                    "type": "string"
+                }
+            }
+        },
+        "catalog.NormalizedMedicineInput": {
+            "type": "object",
+            "properties": {
+                "brand_name": {
+                    "type": "string"
+                },
+                "form": {
+                    "type": "string"
+                },
+                "generic_name": {
+                    "type": "string"
+                },
+                "strength": {
+                    "type": "string"
+                }
+            }
+        },
+        "catalog.PendingCandidateSummary": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/model.MedicineCandidateStatus"
+                }
+            }
+        },
+        "catalog.RejectMedicineCandidateRequest": {
+            "type": "object",
+            "properties": {
+                "decision_note": {
+                    "type": "string"
+                }
+            }
+        },
         "catalog.UpsertMedicineInput": {
             "type": "object",
             "properties": {
@@ -1659,6 +2234,19 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "model.MedicineCandidateStatus": {
+            "type": "string",
+            "enum": [
+                "PENDING",
+                "APPROVED",
+                "REJECTED"
+            ],
+            "x-enum-varnames": [
+                "MedicineCandidateStatusPending",
+                "MedicineCandidateStatusApproved",
+                "MedicineCandidateStatusRejected"
+            ]
         },
         "model.UserRole": {
             "type": "string",

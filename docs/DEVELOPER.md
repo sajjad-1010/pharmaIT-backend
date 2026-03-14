@@ -87,6 +87,31 @@ Webhook signature transport:
 - Signature payload: `invoice_id:transaction_id:STATUS_UPPER`
 - Secret: `PAYMENT_WEBHOOK_SECRET` (raw string from env)
 
+### Catalog Identity + Import Review
+- Canonical medicine identity is normalized:
+  - `generic_name`
+  - `brand_name`
+  - `form`
+  - `strength`
+- Normalization rules:
+  - trim outer whitespace
+  - lowercase
+  - collapse repeated whitespace
+  - punctuation/symbols are reduced to spaces
+- Backend enforces duplicate prevention on the normalized identity at DB level.
+- Wholesaler Excel/app import flow must call validation before creating an offer for a new medicine.
+- If a medicine is not matched, the wholesaler submits a `medicine_candidate` instead of creating a catalog medicine directly.
+- Candidate review statuses:
+  - `PENDING`
+  - `APPROVED`
+  - `REJECTED`
+- Validation response statuses:
+  - `MATCHED`
+  - `AMBIGUOUS`
+  - `SUGGESTED_MATCH`
+  - `NEW_MEDICINE`
+  - `PENDING_REVIEW`
+
 ## 3) Core Workflows
 
 ### Order + Stock Reservation
@@ -118,6 +143,34 @@ Webhook signature transport:
 1. Client opens `GET /api/v1/stream/offers`.
 2. API subscribes to Redis channel (`sse_offers`) and forwards to in-memory broker.
 3. Worker publishes `offer.updated` and `inventory.changed` events to Redis pubsub from outbox processor.
+
+### Medicine Import + Admin Review
+1. Wholesaler app parses Excel row and sends it to `POST /api/v1/medicines/validate`.
+2. Backend normalizes `generic_name`, `brand_name`, `form`, `strength`.
+3. Backend checks:
+   - exact normalized match in `medicines`
+   - existing pending duplicate in `medicine_candidates`
+   - close suggestions using trigram similarity
+4. Backend returns one of:
+   - `MATCHED`: exact medicine found
+   - `SUGGESTED_MATCH`: no exact match, but one strong suggestion exists
+   - `AMBIGUOUS`: multiple close candidates exist
+   - `NEW_MEDICINE`: no close match found
+   - `PENDING_REVIEW`: same new medicine already waits for admin
+5. If wholesaler confirms it is new, app sends `POST /api/v1/medicine-candidates`.
+6. Backend stores the row in `medicine_candidates` with status `PENDING`.
+7. Admin reviews candidate:
+   - approve by linking to an existing medicine
+   - approve by creating a new medicine
+   - reject with note
+8. Only after approval does the candidate become linked to a real `medicines.id`.
+
+Catalog import API surface:
+- `POST /api/v1/medicines/validate`
+- `POST /api/v1/medicine-candidates`
+- `GET /api/v1/admin/medicine-candidates`
+- `POST /api/v1/admin/medicine-candidates/:id/approve`
+- `POST /api/v1/admin/medicine-candidates/:id/reject`
 
 ## 4) Cursor Rules by Domain
 - Offers: `ORDER BY updated_at DESC, id DESC` and cursor `(updated_at, id) < (...)`
@@ -172,6 +225,20 @@ erDiagram
     string strength
     string pack_size
     boolean is_active
+  }
+
+  MEDICINE_CANDIDATES {
+    uuid id PK
+    uuid wholesaler_id FK
+    string generic_name
+    string brand_name
+    string form
+    string strength
+    string status
+    uuid matched_medicine_id FK
+    uuid reviewed_by FK
+    datetime reviewed_at
+    datetime created_at
   }
 
   WHOLESALER_OFFERS {
@@ -315,6 +382,9 @@ erDiagram
   USERS ||--|| MANUFACTURERS : "profile"
 
   MANUFACTURERS ||--o{ MEDICINES : "produces"
+  WHOLESALERS ||--o{ MEDICINE_CANDIDATES : "submits"
+  MEDICINES ||--o{ MEDICINE_CANDIDATES : "approved_as"
+  USERS ||--o{ MEDICINE_CANDIDATES : "reviews"
 
   WHOLESALERS ||--o{ WHOLESALER_OFFERS : "offers"
   MEDICINES ||--o{ WHOLESALER_OFFERS : "listed_as"

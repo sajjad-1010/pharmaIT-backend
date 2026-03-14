@@ -17,8 +17,8 @@ import (
 )
 
 type Service struct {
-	db    *gorm.DB
-	redis *redis.Client
+	db     *gorm.DB
+	redis  *redis.Client
 	search SearchProvider
 }
 
@@ -93,6 +93,25 @@ func (s *Service) CreateMedicine(ctx context.Context, input UpsertMedicineInput)
 		return nil, appErr.BadRequest("INVALID_MEDICINE", "generic_name and form are required", nil)
 	}
 
+	return s.createMedicineWithDB(s.db.WithContext(ctx), input)
+}
+
+func (s *Service) createMedicineWithDB(q *gorm.DB, input UpsertMedicineInput) (*model.Medicine, error) {
+	identity := buildNormalizedMedicineIdentity(MedicineImportPayload{
+		GenericName: input.GenericName,
+		BrandName:   input.BrandName,
+		Form:        input.Form,
+		Strength:    input.Strength,
+		PackSize:    input.PackSize,
+		ATCCode:     input.ATCCode,
+	})
+	if err := validateNormalizedIdentity(identity); err != nil {
+		return nil, err
+	}
+	if err := s.ensureMedicineIdentityUnique(q, identity, nil); err != nil {
+		return nil, err
+	}
+
 	medicine := &model.Medicine{
 		ID:             uuid.New(),
 		ManufacturerID: input.ManufacturerID,
@@ -108,7 +127,10 @@ func (s *Service) CreateMedicine(ctx context.Context, input UpsertMedicineInput)
 		medicine.IsActive = *input.IsActive
 	}
 
-	if err := s.db.WithContext(ctx).Create(medicine).Error; err != nil {
+	if err := q.Create(medicine).Error; err != nil {
+		if mapped := mapMedicineIdentityConflict(err); mapped != nil {
+			return nil, mapped
+		}
 		return nil, appErr.Internal("failed to create medicine")
 	}
 	return medicine, nil
@@ -150,7 +172,25 @@ func (s *Service) UpdateMedicine(ctx context.Context, id uuid.UUID, input Upsert
 		return &medicine, nil
 	}
 
+	targetIdentity := buildNormalizedMedicineIdentity(MedicineImportPayload{
+		GenericName: firstNonEmpty(input.GenericName, medicine.GenericName),
+		BrandName:   firstNonNilString(input.BrandName, medicine.BrandName),
+		Form:        firstNonEmpty(input.Form, medicine.Form),
+		Strength:    firstNonNilString(input.Strength, medicine.Strength),
+		PackSize:    firstNonNilString(input.PackSize, medicine.PackSize),
+		ATCCode:     firstNonNilString(input.ATCCode, medicine.ATCCode),
+	})
+	if err := validateNormalizedIdentity(targetIdentity); err != nil {
+		return nil, err
+	}
+	if err := s.ensureMedicineIdentityUnique(s.db.WithContext(ctx), targetIdentity, &id); err != nil {
+		return nil, err
+	}
+
 	if err := s.db.WithContext(ctx).Model(&model.Medicine{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+		if mapped := mapMedicineIdentityConflict(err); mapped != nil {
+			return nil, mapped
+		}
 		return nil, appErr.Internal("failed to update medicine")
 	}
 
@@ -169,4 +209,59 @@ func trimPtr(v *string) *string {
 		return nil
 	}
 	return &t
+}
+
+func validateNormalizedIdentity(identity normalizedMedicineIdentity) error {
+	if identity.GenericName == "" || identity.Form == "" {
+		return appErr.BadRequest("INVALID_MEDICINE", "generic_name and form are required", nil)
+	}
+	return nil
+}
+
+func (s *Service) ensureMedicineIdentityUnique(q *gorm.DB, identity normalizedMedicineIdentity, excludeID *uuid.UUID) error {
+	var count int64
+	query := q.Model(&model.Medicine{}).
+		Where("normalize_catalog_text(generic_name) = ?", identity.GenericName).
+		Where("COALESCE(normalize_catalog_text(brand_name), '') = ?", normalizedValue(identity.BrandName)).
+		Where("normalize_catalog_text(form) = ?", identity.Form).
+		Where("COALESCE(normalize_catalog_text(strength), '') = ?", normalizedValue(identity.Strength))
+	if excludeID != nil {
+		query = query.Where("id <> ?", *excludeID)
+	}
+	if err := query.Count(&count).Error; err != nil {
+		return appErr.Internal("failed to validate medicine uniqueness")
+	}
+	if count > 0 {
+		return appErr.Conflict("MEDICINE_ALREADY_EXISTS", "medicine with the same normalized identity already exists", map[string]interface{}{
+			"generic_name": identity.GenericName,
+			"brand_name":   identity.BrandName,
+			"form":         identity.Form,
+			"strength":     identity.Strength,
+		})
+	}
+	return nil
+}
+
+func mapMedicineIdentityConflict(err error) error {
+	if err == nil {
+		return nil
+	}
+	if strings.Contains(strings.ToLower(err.Error()), "uq_medicines_normalized_identity") {
+		return appErr.Conflict("MEDICINE_ALREADY_EXISTS", "medicine with the same normalized identity already exists", nil)
+	}
+	return nil
+}
+
+func firstNonEmpty(next, current string) string {
+	if strings.TrimSpace(next) != "" {
+		return next
+	}
+	return current
+}
+
+func firstNonNilString(next, current *string) *string {
+	if next != nil {
+		return next
+	}
+	return current
 }

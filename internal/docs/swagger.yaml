@@ -1,5 +1,191 @@
 basePath: /api/v1
 definitions:
+  catalog.ApproveMedicineCandidateRequest:
+    properties:
+      atc_code:
+        type: string
+      brand_name:
+        type: string
+      decision_note:
+        type: string
+      form:
+        type: string
+      generic_name:
+        type: string
+      is_active:
+        type: boolean
+      manufacturer_id:
+        type: string
+      medicine_id:
+        type: string
+      pack_size:
+        type: string
+      strength:
+        type: string
+    type: object
+  catalog.ApproveMedicineCandidateResponse:
+    properties:
+      candidate:
+        $ref: '#/definitions/catalog.MedicineCandidateResponse'
+      medicine:
+        $ref: '#/definitions/catalog.MedicineSummary'
+    type: object
+  catalog.CreateMedicineCandidateRequest:
+    properties:
+      atc_code:
+        type: string
+      brand_name:
+        type: string
+      force_submit:
+        type: boolean
+      form:
+        type: string
+      generic_name:
+        type: string
+      pack_size:
+        type: string
+      strength:
+        type: string
+    type: object
+  catalog.ImportValidationResponse:
+    properties:
+      candidates:
+        items:
+          $ref: '#/definitions/catalog.MedicineSuggestion'
+        type: array
+      matched_medicine:
+        $ref: '#/definitions/catalog.MedicineSummary'
+      normalized:
+        $ref: '#/definitions/catalog.NormalizedMedicineInput'
+      pending_candidate:
+        $ref: '#/definitions/catalog.PendingCandidateSummary'
+      status:
+        $ref: '#/definitions/catalog.MatchStatus'
+      suggested_medicine:
+        $ref: '#/definitions/catalog.MedicineSuggestion'
+    type: object
+  catalog.ListMedicineCandidatesResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/catalog.MedicineCandidateResponse'
+        type: array
+    type: object
+  catalog.MatchStatus:
+    enum:
+    - MATCHED
+    - AMBIGUOUS
+    - SUGGESTED_MATCH
+    - NEW_MEDICINE
+    - PENDING_REVIEW
+    type: string
+    x-enum-varnames:
+    - MatchStatusMatched
+    - MatchStatusAmbiguous
+    - MatchStatusSuggestedMatch
+    - MatchStatusNewMedicine
+    - MatchStatusPendingReview
+  catalog.MedicineCandidateResponse:
+    properties:
+      admin_decision_note:
+        type: string
+      atc_code:
+        type: string
+      brand_name:
+        type: string
+      created_at:
+        type: string
+      form:
+        type: string
+      generic_name:
+        type: string
+      id:
+        type: string
+      matched_medicine_id:
+        type: string
+      pack_size:
+        type: string
+      reviewed_at:
+        type: string
+      reviewed_by:
+        type: string
+      status:
+        $ref: '#/definitions/model.MedicineCandidateStatus'
+      strength:
+        type: string
+      updated_at:
+        type: string
+      wholesaler_id:
+        type: string
+    type: object
+  catalog.MedicineImportPayload:
+    properties:
+      atc_code:
+        type: string
+      brand_name:
+        type: string
+      form:
+        type: string
+      generic_name:
+        type: string
+      pack_size:
+        type: string
+      strength:
+        type: string
+    type: object
+  catalog.MedicineSuggestion:
+    properties:
+      medicine:
+        $ref: '#/definitions/catalog.MedicineSummary'
+      score:
+        type: number
+    type: object
+  catalog.MedicineSummary:
+    properties:
+      atc_code:
+        type: string
+      brand_name:
+        type: string
+      form:
+        type: string
+      generic_name:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      manufacturer_id:
+        type: string
+      pack_size:
+        type: string
+      strength:
+        type: string
+    type: object
+  catalog.NormalizedMedicineInput:
+    properties:
+      brand_name:
+        type: string
+      form:
+        type: string
+      generic_name:
+        type: string
+      strength:
+        type: string
+    type: object
+  catalog.PendingCandidateSummary:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      status:
+        $ref: '#/definitions/model.MedicineCandidateStatus'
+    type: object
+  catalog.RejectMedicineCandidateRequest:
+    properties:
+      decision_note:
+        type: string
+    type: object
   catalog.UpsertMedicineInput:
     properties:
       atc_code:
@@ -21,6 +207,16 @@ definitions:
       strength:
         type: string
     type: object
+  model.MedicineCandidateStatus:
+    enum:
+    - PENDING
+    - APPROVED
+    - REJECTED
+    type: string
+    x-enum-varnames:
+    - MedicineCandidateStatusPending
+    - MedicineCandidateStatusApproved
+    - MedicineCandidateStatusRejected
   model.UserRole:
     enum:
     - PHARMACY
@@ -113,6 +309,125 @@ info:
   title: PharmaLink API
   version: "1.0"
 paths:
+  /admin/medicine-candidates/:
+    get:
+      parameters:
+      - description: candidate status
+        in: query
+        name: status
+        type: string
+      - description: limit
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/catalog.ListMedicineCandidatesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: List medicine candidates waiting for review (Admin)
+      tags:
+      - admin
+  /admin/medicine-candidates/{id}/approve:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: medicine candidate id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: approve payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/catalog.ApproveMedicineCandidateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/catalog.ApproveMedicineCandidateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Approve medicine candidate (Admin)
+      tags:
+      - admin
+  /admin/medicine-candidates/{id}/reject:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: medicine candidate id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: reject payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/catalog.RejectMedicineCandidateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/catalog.MedicineCandidateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Reject medicine candidate (Admin)
+      tags:
+      - admin
   /admin/medicines/:
     post:
       consumes:
@@ -639,6 +954,41 @@ paths:
       summary: Create manufacturer quote (Manufacturer)
       tags:
       - manufacturer
+  /medicine-candidates/:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: medicine candidate payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/catalog.CreateMedicineCandidateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/catalog.MedicineCandidateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Submit new medicine candidate for admin review (Wholesaler)
+      tags:
+      - catalog
   /medicines:
     get:
       parameters:
@@ -667,6 +1017,37 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorEnvelope'
       summary: List/search medicines
+      tags:
+      - catalog
+  /medicines/validate:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: medicine import payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/catalog.MedicineImportPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/catalog.ImportValidationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Validate medicine import row (Wholesaler)
       tags:
       - catalog
   /offers:

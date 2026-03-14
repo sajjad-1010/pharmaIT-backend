@@ -51,6 +51,84 @@ curl http://localhost/api/v1/auth/me \
 curl "http://localhost/api/v1/medicines?query=para&limit=20&cursor="
 ```
 
+### Validate Medicine Import Row (Wholesaler)
+```bash
+curl -X POST http://localhost/api/v1/medicines/validate \
+  -H "Authorization: Bearer <WHOLESALER_ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "generic_name":"Paracetamol",
+    "brand_name":"Panadole",
+    "form":"Tablet",
+    "strength":"500 mg",
+    "pack_size":"20 tabs",
+    "atc_code":"N02BE01"
+  }'
+```
+
+Possible `status` values in response:
+- `MATCHED`
+- `AMBIGUOUS`
+- `SUGGESTED_MATCH`
+- `NEW_MEDICINE`
+- `PENDING_REVIEW`
+
+### Submit New Medicine Candidate (Wholesaler)
+Use this only when validation returns `NEW_MEDICINE`, or when the wholesaler explicitly overrides suggestions by setting `force_submit=true`.
+
+```bash
+curl -X POST http://localhost/api/v1/medicine-candidates \
+  -H "Authorization: Bearer <WHOLESALER_ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "generic_name":"Ceftriaxone",
+    "brand_name":"Ceftron",
+    "form":"Injection",
+    "strength":"1 g",
+    "pack_size":"10 vials",
+    "atc_code":"J01DD04",
+    "force_submit":true
+  }'
+```
+
+### List Pending Medicine Candidates (Admin)
+```bash
+curl "http://localhost/api/v1/admin/medicine-candidates?status=PENDING&limit=50" \
+  -H "Authorization: Bearer <ADMIN_ACCESS_TOKEN>"
+```
+
+### Approve Candidate by Linking to Existing Medicine (Admin)
+```bash
+curl -X POST http://localhost/api/v1/admin/medicine-candidates/<CANDIDATE_ID>/approve \
+  -H "Authorization: Bearer <ADMIN_ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "medicine_id":"<MEDICINE_ID>",
+    "decision_note":"Matched to existing catalog medicine"
+  }'
+```
+
+### Approve Candidate by Creating New Medicine (Admin)
+```bash
+curl -X POST http://localhost/api/v1/admin/medicine-candidates/<CANDIDATE_ID>/approve \
+  -H "Authorization: Bearer <ADMIN_ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "manufacturer_id":"<MANUFACTURER_ID>",
+    "decision_note":"Approved as new medicine"
+  }'
+```
+
+### Reject Candidate (Admin)
+```bash
+curl -X POST http://localhost/api/v1/admin/medicine-candidates/<CANDIDATE_ID>/reject \
+  -H "Authorization: Bearer <ADMIN_ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "decision_note":"Spelling issue, use existing medicine instead"
+  }'
+```
+
 ## 3) Offers
 
 ### Create Offer (Wholesaler)

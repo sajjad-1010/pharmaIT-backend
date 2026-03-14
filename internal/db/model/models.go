@@ -108,6 +108,14 @@ const (
 	InventoryMovementTypeAdjust   InventoryMovementType = "ADJUST"
 )
 
+type MedicineCandidateStatus string
+
+const (
+	MedicineCandidateStatusPending  MedicineCandidateStatus = "PENDING"
+	MedicineCandidateStatusApproved MedicineCandidateStatus = "APPROVED"
+	MedicineCandidateStatusRejected MedicineCandidateStatus = "REJECTED"
+)
+
 type User struct {
 	ID           uuid.UUID  `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
 	Email        *string    `gorm:"type:text;uniqueIndex"`
@@ -167,6 +175,30 @@ type Medicine struct {
 
 func (Medicine) TableName() string { return "medicines" }
 
+type MedicineCandidate struct {
+	ID                    uuid.UUID               `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
+	WholesalerID          uuid.UUID               `gorm:"type:uuid;not null;index:idx_medicine_candidates_wh_status_created,priority:1"`
+	GenericName           string                  `gorm:"type:text;not null"`
+	BrandName             *string                 `gorm:"type:text"`
+	Form                  string                  `gorm:"type:text;not null"`
+	Strength              *string                 `gorm:"type:text"`
+	PackSize              *string                 `gorm:"type:text"`
+	ATCCode               *string                 `gorm:"type:text"`
+	NormalizedGenericName string                  `gorm:"type:text;not null"`
+	NormalizedBrandName   *string                 `gorm:"type:text"`
+	NormalizedForm        string                  `gorm:"type:text;not null"`
+	NormalizedStrength    *string                 `gorm:"type:text"`
+	Status                MedicineCandidateStatus `gorm:"type:medicine_candidate_status;not null;default:PENDING;index:idx_medicine_candidates_status_created,priority:1;index:idx_medicine_candidates_wh_status_created,priority:2"`
+	MatchedMedicineID     *uuid.UUID              `gorm:"type:uuid"`
+	AdminDecisionNote     *string                 `gorm:"type:text"`
+	ReviewedBy            *uuid.UUID              `gorm:"type:uuid"`
+	ReviewedAt            *time.Time              `gorm:"type:timestamptz"`
+	CreatedAt             time.Time               `gorm:"type:timestamptz;not null;default:now();index:idx_medicine_candidates_status_created,priority:2;sort:desc;index:idx_medicine_candidates_wh_status_created,priority:3;sort:desc"`
+	UpdatedAt             time.Time               `gorm:"type:timestamptz;not null;default:now()"`
+}
+
+func (MedicineCandidate) TableName() string { return "medicine_candidates" }
+
 type WholesalerOffer struct {
 	ID               uuid.UUID       `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
 	WholesalerID     uuid.UUID       `gorm:"type:uuid;not null;index:uq_wholesaler_medicine_active_offer,priority:1,unique"`
@@ -224,17 +256,17 @@ type RareRequest struct {
 func (RareRequest) TableName() string { return "rare_requests" }
 
 type RareBid struct {
-	ID               uuid.UUID     `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
-	RareRequestID    uuid.UUID     `gorm:"type:uuid;not null;index:idx_rare_bids_request_status,priority:1"`
-	WholesalerID     uuid.UUID     `gorm:"type:uuid;not null"`
+	ID               uuid.UUID       `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
+	RareRequestID    uuid.UUID       `gorm:"type:uuid;not null;index:idx_rare_bids_request_status,priority:1"`
+	WholesalerID     uuid.UUID       `gorm:"type:uuid;not null"`
 	Price            decimal.Decimal `gorm:"type:numeric(18,4);not null"`
-	Currency         string        `gorm:"type:text;not null"`
-	AvailableQty     int           `gorm:"type:int;not null;default:0"`
-	DeliveryETAHours *int          `gorm:"type:int"`
-	Notes            *string       `gorm:"type:text"`
-	Status           RareBidStatus `gorm:"type:rare_bid_status;not null;default:SUBMITTED;index:idx_rare_bids_request_status,priority:2"`
-	CreatedAt        time.Time     `gorm:"type:timestamptz;not null;default:now()"`
-	UpdatedAt        time.Time     `gorm:"type:timestamptz;not null;default:now()"`
+	Currency         string          `gorm:"type:text;not null"`
+	AvailableQty     int             `gorm:"type:int;not null;default:0"`
+	DeliveryETAHours *int            `gorm:"type:int"`
+	Notes            *string         `gorm:"type:text"`
+	Status           RareBidStatus   `gorm:"type:rare_bid_status;not null;default:SUBMITTED;index:idx_rare_bids_request_status,priority:2"`
+	CreatedAt        time.Time       `gorm:"type:timestamptz;not null;default:now()"`
+	UpdatedAt        time.Time       `gorm:"type:timestamptz;not null;default:now()"`
 }
 
 func (RareBid) TableName() string { return "rare_bids" }
@@ -333,4 +365,3 @@ type InventoryMovement struct {
 }
 
 func (InventoryMovement) TableName() string { return "inventory_movements" }
-

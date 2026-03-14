@@ -164,7 +164,7 @@ func main() {
 	wholesalerOnly := rbac.Allow(model.UserRoleWholesaler)
 
 	userHandler.RegisterRoutes(v1, authMW, adminOnly)
-	catalogHandler.RegisterRoutes(v1, authMW, adminOnly)
+	catalogHandler.RegisterRoutes(v1, authMW, adminOnly, wholesalerOnly)
 	offersHandler.RegisterRoutes(v1, authMW, wholesalerOnly)
 	inventoryHandler.RegisterRoutes(v1, authMW, wholesalerOnly)
 	ordersHandler.RegisterRoutes(v1, authMW)

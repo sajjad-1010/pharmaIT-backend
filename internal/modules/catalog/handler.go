@@ -113,9 +113,6 @@ func (h *Handler) create(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return response.Fail(c, appErr.BadRequest("INVALID_BODY", "invalid request body", nil))
 	}
-	if req.ManufacturerID == uuid.Nil {
-		return response.Fail(c, appErr.BadRequest("INVALID_MANUFACTURER", "manufacturer_id is required", nil))
-	}
 
 	medicine, err := h.svc.CreateMedicine(c.UserContext(), req)
 	if err != nil {

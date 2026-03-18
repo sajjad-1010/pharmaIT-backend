@@ -52,3 +52,4 @@ Copy from `.env.example`. Important variables:
 - [Run Guide](docs/RUN.md)
 - [Developer Guide](docs/DEVELOPER.md)
 - [API Testing](docs/API_TESTING.md)
+- [Frontend Catalog Import](docs/FRONTEND_CATALOG_IMPORT.md)

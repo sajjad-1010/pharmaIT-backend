@@ -48,15 +48,14 @@ type ListMedicinesInput struct {
 }
 
 type UpsertMedicineInput struct {
-	ID             *uuid.UUID `json:"id,omitempty"`
-	ManufacturerID uuid.UUID  `json:"manufacturer_id"`
-	GenericName    string     `json:"generic_name"`
-	BrandName      *string    `json:"brand_name"`
-	Form           string     `json:"form"`
-	Strength       *string    `json:"strength"`
-	PackSize       *string    `json:"pack_size"`
-	ATCCode        *string    `json:"atc_code"`
-	IsActive       *bool      `json:"is_active"`
+	ID          *uuid.UUID `json:"id,omitempty"`
+	GenericName string     `json:"generic_name"`
+	BrandName   *string    `json:"brand_name"`
+	Form        string     `json:"form"`
+	Strength    *string    `json:"strength"`
+	PackSize    *string    `json:"pack_size"`
+	ATCCode     *string    `json:"atc_code"`
+	IsActive    *bool      `json:"is_active"`
 }
 
 func (s *Service) ListMedicines(ctx context.Context, input ListMedicinesInput) (pagination.Result[model.Medicine], error) {
@@ -113,15 +112,14 @@ func (s *Service) createMedicineWithDB(q *gorm.DB, input UpsertMedicineInput) (*
 	}
 
 	medicine := &model.Medicine{
-		ID:             uuid.New(),
-		ManufacturerID: input.ManufacturerID,
-		GenericName:    strings.TrimSpace(input.GenericName),
-		BrandName:      trimPtr(input.BrandName),
-		Form:           strings.TrimSpace(input.Form),
-		Strength:       trimPtr(input.Strength),
-		PackSize:       trimPtr(input.PackSize),
-		ATCCode:        trimPtr(input.ATCCode),
-		IsActive:       true,
+		ID:          uuid.New(),
+		GenericName: strings.TrimSpace(input.GenericName),
+		BrandName:   trimPtr(input.BrandName),
+		Form:        strings.TrimSpace(input.Form),
+		Strength:    trimPtr(input.Strength),
+		PackSize:    trimPtr(input.PackSize),
+		ATCCode:     trimPtr(input.ATCCode),
+		IsActive:    true,
 	}
 	if input.IsActive != nil {
 		medicine.IsActive = *input.IsActive

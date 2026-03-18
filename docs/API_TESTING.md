@@ -73,6 +73,20 @@ Possible `status` values in response:
 - `NEW_MEDICINE`
 - `PENDING_REVIEW`
 
+Important backend rule:
+- if exact catalog match exists, response must immediately be:
+  - `status = MATCHED`
+  - `matched_medicine != null`
+  - `warnings = []`
+  - `suggested_medicine = null`
+  - `candidates = []`
+  - `pending_candidate = null`
+
+Possible warning objects in `warnings[]`:
+- `field = "brand_name"`
+- `code = "BRAND_NAME_RECOMMENDED"`
+- meaning: backend recommends filling `brand_name` because matching and duplicate detection become more accurate
+
 ### Submit New Medicine Candidate (Wholesaler)
 Use this only when validation returns `NEW_MEDICINE`, or when the wholesaler explicitly overrides suggestions by setting `force_submit=true`.
 
@@ -114,7 +128,9 @@ curl -X POST http://localhost/api/v1/admin/medicine-candidates/<CANDIDATE_ID>/ap
   -H "Authorization: Bearer <ADMIN_ACCESS_TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{
-    "manufacturer_id":"<MANUFACTURER_ID>",
+    "brand_name":"Ceftron",
+    "form":"Injection",
+    "strength":"1 g",
     "decision_note":"Approved as new medicine"
   }'
 ```
@@ -141,11 +157,14 @@ curl -X POST http://localhost/api/v1/offers \
     "display_price":"10.5000",
     "currency":"TJS",
     "available_qty":120,
-    "min_order_qty":5,
-    "delivery_eta_hours":24,
+    "expiry_date":"2027-09-15",
     "is_active":true
   }'
 ```
+
+Offer contract note:
+- `min_order_qty` is fixed internally to `1` and is not part of the public offer API.
+- `delivery_eta_hours` was removed from regular offers. Keep ETA only in rare bid submissions.
 
 ### List Offers (Cursor)
 ```bash

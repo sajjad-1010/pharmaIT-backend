@@ -34,16 +34,21 @@ type NormalizedMedicineInput struct {
 	Strength    *string `json:"strength,omitempty"`
 }
 
+type ValidationWarning struct {
+	Field   string `json:"field"`
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
 type MedicineSummary struct {
-	ID             uuid.UUID `json:"id"`
-	ManufacturerID uuid.UUID `json:"manufacturer_id"`
-	GenericName    string    `json:"generic_name"`
-	BrandName      *string   `json:"brand_name,omitempty"`
-	Form           string    `json:"form"`
-	Strength       *string   `json:"strength,omitempty"`
-	PackSize       *string   `json:"pack_size,omitempty"`
-	ATCCode        *string   `json:"atc_code,omitempty"`
-	IsActive       bool      `json:"is_active"`
+	ID          uuid.UUID `json:"id"`
+	GenericName string    `json:"generic_name"`
+	BrandName   *string   `json:"brand_name,omitempty"`
+	Form        string    `json:"form"`
+	Strength    *string   `json:"strength,omitempty"`
+	PackSize    *string   `json:"pack_size,omitempty"`
+	ATCCode     *string   `json:"atc_code,omitempty"`
+	IsActive    bool      `json:"is_active"`
 }
 
 type MedicineSuggestion struct {
@@ -60,10 +65,11 @@ type PendingCandidateSummary struct {
 type ImportValidationResponse struct {
 	Status            MatchStatus              `json:"status"`
 	Normalized        NormalizedMedicineInput  `json:"normalized"`
-	MatchedMedicine   *MedicineSummary         `json:"matched_medicine,omitempty"`
-	SuggestedMedicine *MedicineSuggestion      `json:"suggested_medicine,omitempty"`
-	Candidates        []MedicineSuggestion     `json:"candidates,omitempty"`
-	PendingCandidate  *PendingCandidateSummary `json:"pending_candidate,omitempty"`
+	Warnings          []ValidationWarning      `json:"warnings"`
+	MatchedMedicine   *MedicineSummary         `json:"matched_medicine"`
+	SuggestedMedicine *MedicineSuggestion      `json:"suggested_medicine"`
+	Candidates        []MedicineSuggestion     `json:"candidates"`
+	PendingCandidate  *PendingCandidateSummary `json:"pending_candidate"`
 }
 
 type CreateMedicineCandidateRequest struct {
@@ -99,16 +105,15 @@ type ListMedicineCandidatesResponse struct {
 }
 
 type ApproveMedicineCandidateRequest struct {
-	MedicineID     *uuid.UUID `json:"medicine_id,omitempty"`
-	ManufacturerID *uuid.UUID `json:"manufacturer_id,omitempty"`
-	GenericName    *string    `json:"generic_name,omitempty"`
-	BrandName      *string    `json:"brand_name,omitempty"`
-	Form           *string    `json:"form,omitempty"`
-	Strength       *string    `json:"strength,omitempty"`
-	PackSize       *string    `json:"pack_size,omitempty"`
-	ATCCode        *string    `json:"atc_code,omitempty"`
-	IsActive       *bool      `json:"is_active,omitempty"`
-	DecisionNote   *string    `json:"decision_note,omitempty"`
+	MedicineID   *uuid.UUID `json:"medicine_id,omitempty"`
+	GenericName  *string    `json:"generic_name,omitempty"`
+	BrandName    *string    `json:"brand_name,omitempty"`
+	Form         *string    `json:"form,omitempty"`
+	Strength     *string    `json:"strength,omitempty"`
+	PackSize     *string    `json:"pack_size,omitempty"`
+	ATCCode      *string    `json:"atc_code,omitempty"`
+	IsActive     *bool      `json:"is_active,omitempty"`
+	DecisionNote *string    `json:"decision_note,omitempty"`
 }
 
 type RejectMedicineCandidateRequest struct {

@@ -14,8 +14,6 @@ definitions:
         type: string
       is_active:
         type: boolean
-      manufacturer_id:
-        type: string
       medicine_id:
         type: string
       pack_size:
@@ -63,6 +61,10 @@ definitions:
         $ref: '#/definitions/catalog.MatchStatus'
       suggested_medicine:
         $ref: '#/definitions/catalog.MedicineSuggestion'
+      warnings:
+        items:
+          $ref: '#/definitions/catalog.ValidationWarning'
+        type: array
     type: object
   catalog.ListMedicineCandidatesResponse:
     properties:
@@ -154,8 +156,6 @@ definitions:
         type: string
       is_active:
         type: boolean
-      manufacturer_id:
-        type: string
       pack_size:
         type: string
       strength:
@@ -200,11 +200,18 @@ definitions:
         type: string
       is_active:
         type: boolean
-      manufacturer_id:
-        type: string
       pack_size:
         type: string
       strength:
+        type: string
+    type: object
+  catalog.ValidationWarning:
+    properties:
+      code:
+        type: string
+      field:
+        type: string
+      message:
         type: string
     type: object
   model.MedicineCandidateStatus:
@@ -235,8 +242,6 @@ definitions:
         type: integer
       currency:
         type: string
-      delivery_eta_hours:
-        type: integer
       display_price:
         type: string
       expiry_date:
@@ -245,8 +250,6 @@ definitions:
         type: boolean
       medicine_id:
         type: string
-      min_order_qty:
-        type: integer
     type: object
   payments.WebhookInput:
     properties:

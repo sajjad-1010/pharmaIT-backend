@@ -28,6 +28,21 @@ migrations/      # golang-migrate SQL
 deploy/nginx/    # gateway/rate limiting config
 ```
 
+## 1.1) Recent Catalog Refactor
+- `medicines` no longer depends on platform `manufacturer` accounts.
+- `medicines.manufacturer_id` was removed by migration `000003_decouple_medicines_from_manufacturers`.
+- Canonical medicine identity is now based on:
+  - `generic_name`
+  - `brand_name`
+  - `form`
+  - `strength`
+- `brand_name` is still technically optional, but validation now always returns a warning when it is missing.
+- Admin approval of a new `medicine_candidate` no longer requires `manufacturer_id`.
+- Approving a candidate now does one of two things:
+  - link the candidate to an existing `medicine`
+  - create a new `medicine` directly from the candidate payload
+- After approve, no offer is auto-created. The wholesaler must still create an offer separately.
+
 ## 2) Conventions
 
 ### Error Format
@@ -88,6 +103,7 @@ Webhook signature transport:
 - Secret: `PAYMENT_WEBHOOK_SECRET` (raw string from env)
 
 ### Catalog Identity + Import Review
+- Catalog medicines are decoupled from platform `manufacturer` accounts.
 - Canonical medicine identity is normalized:
   - `generic_name`
   - `brand_name`
@@ -111,6 +127,8 @@ Webhook signature transport:
   - `SUGGESTED_MATCH`
   - `NEW_MEDICINE`
   - `PENDING_REVIEW`
+- Validation warnings:
+  - `BRAND_NAME_RECOMMENDED`: backend allows missing `brand_name`, but always warns because it materially improves matching accuracy and duplicate detection.
 
 ## 3) Core Workflows
 
@@ -123,6 +141,12 @@ Webhook signature transport:
 6. `wholesaler_offers.available_qty` cache field is updated.
 7. `orders` + `order_items` persisted.
 8. Outbox events written and `NOTIFY outbox_new` sent.
+
+Offer contract note:
+- `wholesaler_offers.min_order_qty` still exists internally in the database, but it is fixed to `1`.
+- The public `/offers` API no longer accepts or returns `min_order_qty`.
+- `delivery_eta_hours` was removed from regular offers.
+- ETA remains available on `rare_bids.delivery_eta_hours`.
 
 ### Payment + Access Pass
 1. User creates invoice (`payments.status=PENDING`).
@@ -151,19 +175,32 @@ Webhook signature transport:
    - exact normalized match in `medicines`
    - existing pending duplicate in `medicine_candidates`
    - close suggestions using trigram similarity
+   - warnings such as missing `brand_name`
+4. Decision order is strict:
+   - exact catalog match
+   - exact pending candidate match
+   - fuzzy catalog suggestions
+   - new medicine
 4. Backend returns one of:
    - `MATCHED`: exact medicine found
    - `SUGGESTED_MATCH`: no exact match, but one strong suggestion exists
    - `AMBIGUOUS`: multiple close candidates exist
    - `NEW_MEDICINE`: no close match found
    - `PENDING_REVIEW`: same new medicine already waits for admin
-5. If wholesaler confirms it is new, app sends `POST /api/v1/medicine-candidates`.
-6. Backend stores the row in `medicine_candidates` with status `PENDING`.
-7. Admin reviews candidate:
+5. If an exact catalog match exists, backend returns immediately:
+   - `status = MATCHED`
+   - `matched_medicine != null`
+   - `warnings = []`
+   - `suggested_medicine = null`
+   - `candidates = []`
+   - `pending_candidate = null`
+6. If wholesaler confirms it is new, app sends `POST /api/v1/medicine-candidates`.
+7. Backend stores the row in `medicine_candidates` with status `PENDING`.
+8. Admin reviews candidate:
    - approve by linking to an existing medicine
    - approve by creating a new medicine
    - reject with note
-8. Only after approval does the candidate become linked to a real `medicines.id`.
+9. Only after approval does the candidate become linked to a real `medicines.id`.
 
 Catalog import API surface:
 - `POST /api/v1/medicines/validate`
@@ -218,7 +255,6 @@ erDiagram
 
   MEDICINES {
     uuid id PK
-    uuid manufacturer_id FK
     string generic_name
     string brand_name
     string form
@@ -249,7 +285,6 @@ erDiagram
     string currency
     int available_qty
     int min_order_qty
-    int delivery_eta_hours
     date expiry_date
     boolean is_active
     datetime updated_at
@@ -381,7 +416,6 @@ erDiagram
   USERS ||--|| WHOLESALERS : "profile"
   USERS ||--|| MANUFACTURERS : "profile"
 
-  MANUFACTURERS ||--o{ MEDICINES : "produces"
   WHOLESALERS ||--o{ MEDICINE_CANDIDATES : "submits"
   MEDICINES ||--o{ MEDICINE_CANDIDATES : "approved_as"
   USERS ||--o{ MEDICINE_CANDIDATES : "reviews"

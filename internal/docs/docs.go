@@ -1943,9 +1943,6 @@ const docTemplate = `{
                 "is_active": {
                     "type": "boolean"
                 },
-                "manufacturer_id": {
-                    "type": "string"
-                },
                 "medicine_id": {
                     "type": "string"
                 },
@@ -2017,6 +2014,12 @@ const docTemplate = `{
                 },
                 "suggested_medicine": {
                     "$ref": "#/definitions/catalog.MedicineSuggestion"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/catalog.ValidationWarning"
+                    }
                 }
             }
         },
@@ -2153,9 +2156,6 @@ const docTemplate = `{
                 "is_active": {
                     "type": "boolean"
                 },
-                "manufacturer_id": {
-                    "type": "string"
-                },
                 "pack_size": {
                     "type": "string"
                 },
@@ -2224,13 +2224,24 @@ const docTemplate = `{
                 "is_active": {
                     "type": "boolean"
                 },
-                "manufacturer_id": {
-                    "type": "string"
-                },
                 "pack_size": {
                     "type": "string"
                 },
                 "strength": {
+                    "type": "string"
+                }
+            }
+        },
+        "catalog.ValidationWarning": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "field": {
+                    "type": "string"
+                },
+                "message": {
                     "type": "string"
                 }
             }
@@ -2272,9 +2283,6 @@ const docTemplate = `{
                 "currency": {
                     "type": "string"
                 },
-                "delivery_eta_hours": {
-                    "type": "integer"
-                },
                 "display_price": {
                     "type": "string"
                 },
@@ -2286,9 +2294,6 @@ const docTemplate = `{
                 },
                 "medicine_id": {
                     "type": "string"
-                },
-                "min_order_qty": {
-                    "type": "integer"
                 }
             }
         },

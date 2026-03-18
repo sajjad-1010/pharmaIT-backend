@@ -19,9 +19,9 @@ import (
 )
 
 type Service struct {
-	db       *gorm.DB
-	redis    *redis.Client
-	outbox   *outbox.Service
+	db     *gorm.DB
+	redis  *redis.Client
+	outbox *outbox.Service
 }
 
 func NewService(db *gorm.DB, redis *redis.Client, outboxSvc *outbox.Service) *Service {
@@ -77,14 +77,12 @@ func (s *Service) List(ctx context.Context, input ListInput) (pagination.Result[
 }
 
 type UpsertOfferInput struct {
-	MedicineID       uuid.UUID `json:"medicine_id"`
-	DisplayPrice     string    `json:"display_price"`
-	Currency         string    `json:"currency"`
-	AvailableQty     int       `json:"available_qty"`
-	MinOrderQty      int       `json:"min_order_qty"`
-	DeliveryETAHours *int      `json:"delivery_eta_hours"`
-	ExpiryDate       *string   `json:"expiry_date"`
-	IsActive         *bool     `json:"is_active"`
+	MedicineID   uuid.UUID `json:"medicine_id"`
+	DisplayPrice string    `json:"display_price"`
+	Currency     string    `json:"currency"`
+	AvailableQty int       `json:"available_qty"`
+	ExpiryDate   *string   `json:"expiry_date"`
+	IsActive     *bool     `json:"is_active"`
 }
 
 func (s *Service) Create(ctx context.Context, wholesalerID uuid.UUID, input UpsertOfferInput) (*model.WholesalerOffer, error) {
@@ -92,23 +90,19 @@ func (s *Service) Create(ctx context.Context, wholesalerID uuid.UUID, input Upse
 	if err != nil || price.IsNegative() {
 		return nil, appErr.BadRequest("INVALID_DISPLAY_PRICE", "display_price must be non-negative decimal", nil)
 	}
-	if input.MinOrderQty <= 0 {
-		input.MinOrderQty = 1
-	}
 	if input.AvailableQty < 0 {
 		return nil, appErr.BadRequest("INVALID_AVAILABLE_QTY", "available_qty cannot be negative", nil)
 	}
 
 	offer := &model.WholesalerOffer{
-		ID:               uuid.New(),
-		WholesalerID:     wholesalerID,
-		MedicineID:       input.MedicineID,
-		DisplayPrice:     price,
-		Currency:         strings.ToUpper(strings.TrimSpace(input.Currency)),
-		AvailableQty:     input.AvailableQty,
-		MinOrderQty:      input.MinOrderQty,
-		DeliveryETAHours: input.DeliveryETAHours,
-		IsActive:         true,
+		ID:           uuid.New(),
+		WholesalerID: wholesalerID,
+		MedicineID:   input.MedicineID,
+		DisplayPrice: price,
+		Currency:     strings.ToUpper(strings.TrimSpace(input.Currency)),
+		AvailableQty: input.AvailableQty,
+		MinOrderQty:  1,
+		IsActive:     true,
 	}
 	if input.IsActive != nil {
 		offer.IsActive = *input.IsActive
@@ -132,13 +126,12 @@ func (s *Service) Create(ctx context.Context, wholesalerID uuid.UUID, input Upse
 		outboxRow, err := s.outbox.Write(ctx, tx, outbox.Event{
 			Type: "offer.updated",
 			Payload: map[string]interface{}{
-				"offer_id":       offer.ID,
-				"wholesaler_id":  offer.WholesalerID,
-				"medicine_id":    offer.MedicineID,
-				"display_price":  offer.DisplayPrice.StringFixed(4),
-				"available_qty":  offer.AvailableQty,
-				"is_active":      offer.IsActive,
-				"delivery_hours": offer.DeliveryETAHours,
+				"offer_id":      offer.ID,
+				"wholesaler_id": offer.WholesalerID,
+				"medicine_id":   offer.MedicineID,
+				"display_price": offer.DisplayPrice.StringFixed(4),
+				"available_qty": offer.AvailableQty,
+				"is_active":     offer.IsActive,
 			},
 		})
 		if err != nil {
@@ -175,12 +168,6 @@ func (s *Service) Update(ctx context.Context, wholesalerID, offerID uuid.UUID, i
 	}
 	if input.AvailableQty >= 0 {
 		updates["available_qty"] = input.AvailableQty
-	}
-	if input.MinOrderQty > 0 {
-		updates["min_order_qty"] = input.MinOrderQty
-	}
-	if input.DeliveryETAHours != nil {
-		updates["delivery_eta_hours"] = *input.DeliveryETAHours
 	}
 	if input.IsActive != nil {
 		updates["is_active"] = *input.IsActive
@@ -234,4 +221,3 @@ func (s *Service) Update(ctx context.Context, wholesalerID, offerID uuid.UUID, i
 
 	return &offer, nil
 }
-

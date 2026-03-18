@@ -80,13 +80,6 @@ func (s *Service) CreateOrder(ctx context.Context, input CreateOrderInput) (*mod
 				return appErr.Internal("failed to lock offer")
 			}
 
-			if item.Qty < offer.MinOrderQty {
-				return appErr.BadRequest("MIN_ORDER_QTY", "qty is less than offer minimum order quantity", map[string]int{
-					"min_order_qty": offer.MinOrderQty,
-					"qty":           item.Qty,
-				})
-			}
-
 			available, err := s.inventorySvc.CurrentAvailable(ctx, tx, offer.WholesalerID, offer.MedicineID)
 			if err != nil {
 				return err
@@ -160,13 +153,13 @@ func (s *Service) CreateOrder(ctx context.Context, input CreateOrderInput) (*mod
 		out, err := s.outboxSvc.Write(ctx, tx, outbox.Event{
 			Type: "order.status_changed",
 			Payload: map[string]interface{}{
-				"order_id":       order.ID,
-				"old_status":     nil,
-				"new_status":     order.Status,
-				"pharmacy_id":    order.PharmacyID,
-				"wholesaler_id":  order.WholesalerID,
-				"total_amount":   order.TotalAmount.StringFixed(4),
-				"currency":       order.Currency,
+				"order_id":      order.ID,
+				"old_status":    nil,
+				"new_status":    order.Status,
+				"pharmacy_id":   order.PharmacyID,
+				"wholesaler_id": order.WholesalerID,
+				"total_amount":  order.TotalAmount.StringFixed(4),
+				"currency":      order.Currency,
 			},
 		})
 		if err != nil {
@@ -309,4 +302,3 @@ func isValidTransition(from, to model.OrderStatus) bool {
 	}
 	return false
 }
-

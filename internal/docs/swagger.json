@@ -1940,9 +1940,6 @@
                 "is_active": {
                     "type": "boolean"
                 },
-                "manufacturer_id": {
-                    "type": "string"
-                },
                 "medicine_id": {
                     "type": "string"
                 },
@@ -2014,6 +2011,12 @@
                 },
                 "suggested_medicine": {
                     "$ref": "#/definitions/catalog.MedicineSuggestion"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/catalog.ValidationWarning"
+                    }
                 }
             }
         },
@@ -2150,9 +2153,6 @@
                 "is_active": {
                     "type": "boolean"
                 },
-                "manufacturer_id": {
-                    "type": "string"
-                },
                 "pack_size": {
                     "type": "string"
                 },
@@ -2221,13 +2221,24 @@
                 "is_active": {
                     "type": "boolean"
                 },
-                "manufacturer_id": {
-                    "type": "string"
-                },
                 "pack_size": {
                     "type": "string"
                 },
                 "strength": {
+                    "type": "string"
+                }
+            }
+        },
+        "catalog.ValidationWarning": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "field": {
+                    "type": "string"
+                },
+                "message": {
                     "type": "string"
                 }
             }
@@ -2269,9 +2280,6 @@
                 "currency": {
                     "type": "string"
                 },
-                "delivery_eta_hours": {
-                    "type": "integer"
-                },
                 "display_price": {
                     "type": "string"
                 },
@@ -2283,9 +2291,6 @@
                 },
                 "medicine_id": {
                     "type": "string"
-                },
-                "min_order_qty": {
-                    "type": "integer"
                 }
             }
         },

@@ -79,3 +79,23 @@ func TestShouldSuggestSingleMatch(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildValidationWarnings(t *testing.T) {
+	t.Parallel()
+
+	identity := normalizedMedicineIdentity{
+		GenericName: "paracetamol",
+		Form:        "tablet",
+	}
+
+	warnings := buildValidationWarnings(identity)
+	if len(warnings) != 1 {
+		t.Fatalf("expected 1 warning, got %d", len(warnings))
+	}
+	if warnings[0].Code != "BRAND_NAME_RECOMMENDED" {
+		t.Fatalf("unexpected warning code: %s", warnings[0].Code)
+	}
+	if warnings[0].Field != "brand_name" {
+		t.Fatalf("unexpected warning field: %s", warnings[0].Field)
+	}
+}

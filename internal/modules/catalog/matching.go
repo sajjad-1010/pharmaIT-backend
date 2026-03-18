@@ -21,18 +21,17 @@ const (
 )
 
 type scoredMedicineRow struct {
-	ID             uuid.UUID `gorm:"column:id"`
-	ManufacturerID uuid.UUID `gorm:"column:manufacturer_id"`
-	GenericName    string    `gorm:"column:generic_name"`
-	BrandName      *string   `gorm:"column:brand_name"`
-	Form           string    `gorm:"column:form"`
-	Strength       *string   `gorm:"column:strength"`
-	PackSize       *string   `gorm:"column:pack_size"`
-	ATCCode        *string   `gorm:"column:atc_code"`
-	IsActive       bool      `gorm:"column:is_active"`
-	CreatedAt      time.Time `gorm:"column:created_at"`
-	UpdatedAt      time.Time `gorm:"column:updated_at"`
-	Score          float64   `gorm:"column:score"`
+	ID          uuid.UUID `gorm:"column:id"`
+	GenericName string    `gorm:"column:generic_name"`
+	BrandName   *string   `gorm:"column:brand_name"`
+	Form        string    `gorm:"column:form"`
+	Strength    *string   `gorm:"column:strength"`
+	PackSize    *string   `gorm:"column:pack_size"`
+	ATCCode     *string   `gorm:"column:atc_code"`
+	IsActive    bool      `gorm:"column:is_active"`
+	CreatedAt   time.Time `gorm:"column:created_at"`
+	UpdatedAt   time.Time `gorm:"column:updated_at"`
+	Score       float64   `gorm:"column:score"`
 }
 
 type ListMedicineCandidatesFilter struct {
@@ -48,23 +47,23 @@ func (s *Service) ValidateMedicineImport(ctx context.Context, input MedicineImpo
 
 	resp := &ImportValidationResponse{
 		Normalized: identity.Response(),
+		Warnings:   []ValidationWarning{},
+		Candidates: []MedicineSuggestion{},
 	}
 
+	// Exact catalog match must win before any pending/fuzzy logic.
 	exactMatches, err := s.findExactMedicineMatches(ctx, identity, nil)
 	if err != nil {
 		return nil, err
 	}
-	if len(exactMatches) == 1 {
+	if len(exactMatches) > 0 {
 		resp.Status = MatchStatusMatched
 		match := toMedicineSummary(exactMatches[0])
 		resp.MatchedMedicine = &match
 		return resp, nil
 	}
-	if len(exactMatches) > 1 {
-		resp.Status = MatchStatusAmbiguous
-		resp.Candidates = medicineSuggestionsFromMatches(exactMatches, 1)
-		return resp, nil
-	}
+
+	resp.Warnings = buildValidationWarnings(identity)
 
 	pending, err := s.findPendingCandidate(ctx, identity)
 	if err != nil {
@@ -196,27 +195,14 @@ func (s *Service) ApproveMedicineCandidate(ctx context.Context, adminID, candida
 			}
 			medicine = &existing
 		} else {
-			if input.ManufacturerID == nil || *input.ManufacturerID == uuid.Nil {
-				return appErr.BadRequest("INVALID_MANUFACTURER", "manufacturer_id is required when creating a new medicine", nil)
-			}
-
-			var manufacturer model.Manufacturer
-			if err := tx.First(&manufacturer, "user_id = ?", *input.ManufacturerID).Error; err != nil {
-				if err == gorm.ErrRecordNotFound {
-					return appErr.NotFound("MANUFACTURER_NOT_FOUND", "manufacturer not found")
-				}
-				return appErr.Internal("failed to load manufacturer")
-			}
-
 			createInput := UpsertMedicineInput{
-				ManufacturerID: *input.ManufacturerID,
-				GenericName:    pickApprovedText(input.GenericName, candidate.GenericName),
-				BrandName:      pickApprovedPtr(input.BrandName, candidate.BrandName),
-				Form:           pickApprovedText(input.Form, candidate.Form),
-				Strength:       pickApprovedPtr(input.Strength, candidate.Strength),
-				PackSize:       pickApprovedPtr(input.PackSize, candidate.PackSize),
-				ATCCode:        pickApprovedPtr(input.ATCCode, candidate.ATCCode),
-				IsActive:       input.IsActive,
+				GenericName: pickApprovedText(input.GenericName, candidate.GenericName),
+				BrandName:   pickApprovedPtr(input.BrandName, candidate.BrandName),
+				Form:        pickApprovedText(input.Form, candidate.Form),
+				Strength:    pickApprovedPtr(input.Strength, candidate.Strength),
+				PackSize:    pickApprovedPtr(input.PackSize, candidate.PackSize),
+				ATCCode:     pickApprovedPtr(input.ATCCode, candidate.ATCCode),
+				IsActive:    input.IsActive,
 			}
 
 			created, err := s.createMedicineWithDB(tx, createInput)
@@ -416,15 +402,14 @@ func medicineSuggestionsFromMatches(matches []model.Medicine, score float64) []M
 
 func toMedicineSummary(medicine model.Medicine) MedicineSummary {
 	return MedicineSummary{
-		ID:             medicine.ID,
-		ManufacturerID: medicine.ManufacturerID,
-		GenericName:    medicine.GenericName,
-		BrandName:      medicine.BrandName,
-		Form:           medicine.Form,
-		Strength:       medicine.Strength,
-		PackSize:       medicine.PackSize,
-		ATCCode:        medicine.ATCCode,
-		IsActive:       medicine.IsActive,
+		ID:          medicine.ID,
+		GenericName: medicine.GenericName,
+		BrandName:   medicine.BrandName,
+		Form:        medicine.Form,
+		Strength:    medicine.Strength,
+		PackSize:    medicine.PackSize,
+		ATCCode:     medicine.ATCCode,
+		IsActive:    medicine.IsActive,
 	}
 }
 
@@ -474,16 +459,27 @@ func pickApprovedPtr(override, fallback *string) *string {
 
 func (r scoredMedicineRow) toMedicine() model.Medicine {
 	return model.Medicine{
-		ID:             r.ID,
-		ManufacturerID: r.ManufacturerID,
-		GenericName:    r.GenericName,
-		BrandName:      r.BrandName,
-		Form:           r.Form,
-		Strength:       r.Strength,
-		PackSize:       r.PackSize,
-		ATCCode:        r.ATCCode,
-		IsActive:       r.IsActive,
-		CreatedAt:      r.CreatedAt,
-		UpdatedAt:      r.UpdatedAt,
+		ID:          r.ID,
+		GenericName: r.GenericName,
+		BrandName:   r.BrandName,
+		Form:        r.Form,
+		Strength:    r.Strength,
+		PackSize:    r.PackSize,
+		ATCCode:     r.ATCCode,
+		IsActive:    r.IsActive,
+		CreatedAt:   r.CreatedAt,
+		UpdatedAt:   r.UpdatedAt,
 	}
+}
+
+func buildValidationWarnings(identity normalizedMedicineIdentity) []ValidationWarning {
+	var warnings []ValidationWarning
+	if identity.BrandName == nil || strings.TrimSpace(*identity.BrandName) == "" {
+		warnings = append(warnings, ValidationWarning{
+			Field:   "brand_name",
+			Code:    "BRAND_NAME_RECOMMENDED",
+			Message: "brand_name should be filled to improve matching accuracy and reduce duplicates",
+		})
+	}
+	return warnings
 }

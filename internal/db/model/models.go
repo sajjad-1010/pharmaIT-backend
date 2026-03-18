@@ -160,17 +160,16 @@ type Manufacturer struct {
 func (Manufacturer) TableName() string { return "manufacturers" }
 
 type Medicine struct {
-	ID             uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
-	ManufacturerID uuid.UUID `gorm:"type:uuid;not null;index"`
-	GenericName    string    `gorm:"type:text;not null;index"`
-	BrandName      *string   `gorm:"type:text;index"`
-	Form           string    `gorm:"type:text;not null"`
-	Strength       *string   `gorm:"type:text"`
-	PackSize       *string   `gorm:"type:text"`
-	ATCCode        *string   `gorm:"type:text"`
-	IsActive       bool      `gorm:"type:boolean;not null;default:true"`
-	CreatedAt      time.Time `gorm:"type:timestamptz;not null;default:now()"`
-	UpdatedAt      time.Time `gorm:"type:timestamptz;not null;default:now()"`
+	ID          uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
+	GenericName string    `gorm:"type:text;not null;index"`
+	BrandName   *string   `gorm:"type:text;index"`
+	Form        string    `gorm:"type:text;not null"`
+	Strength    *string   `gorm:"type:text"`
+	PackSize    *string   `gorm:"type:text"`
+	ATCCode     *string   `gorm:"type:text"`
+	IsActive    bool      `gorm:"type:boolean;not null;default:true"`
+	CreatedAt   time.Time `gorm:"type:timestamptz;not null;default:now()"`
+	UpdatedAt   time.Time `gorm:"type:timestamptz;not null;default:now()"`
 }
 
 func (Medicine) TableName() string { return "medicines" }
@@ -200,18 +199,17 @@ type MedicineCandidate struct {
 func (MedicineCandidate) TableName() string { return "medicine_candidates" }
 
 type WholesalerOffer struct {
-	ID               uuid.UUID       `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
-	WholesalerID     uuid.UUID       `gorm:"type:uuid;not null;index:uq_wholesaler_medicine_active_offer,priority:1,unique"`
-	MedicineID       uuid.UUID       `gorm:"type:uuid;not null;index:uq_wholesaler_medicine_active_offer,priority:2,unique;index:idx_offers_med_active_updated,priority:1"`
-	DisplayPrice     decimal.Decimal `gorm:"type:numeric(18,4);not null"`
-	Currency         string          `gorm:"type:text;not null"`
-	AvailableQty     int             `gorm:"type:int;not null;default:0"`
-	MinOrderQty      int             `gorm:"type:int;not null;default:1"`
-	DeliveryETAHours *int            `gorm:"type:int"`
-	ExpiryDate       *time.Time      `gorm:"type:date"`
-	IsActive         bool            `gorm:"type:boolean;not null;default:true;index:uq_wholesaler_medicine_active_offer,priority:3,unique;index:idx_offers_med_active_updated,priority:2;index:idx_offers_wh_active,priority:2"`
-	CreatedAt        time.Time       `gorm:"type:timestamptz;not null;default:now()"`
-	UpdatedAt        time.Time       `gorm:"type:timestamptz;not null;default:now();index:idx_offers_med_active_updated,priority:3;sort:desc"`
+	ID           uuid.UUID       `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
+	WholesalerID uuid.UUID       `gorm:"type:uuid;not null;index:uq_wholesaler_medicine_active_offer,priority:1,unique"`
+	MedicineID   uuid.UUID       `gorm:"type:uuid;not null;index:uq_wholesaler_medicine_active_offer,priority:2,unique;index:idx_offers_med_active_updated,priority:1"`
+	DisplayPrice decimal.Decimal `gorm:"type:numeric(18,4);not null"`
+	Currency     string          `gorm:"type:text;not null"`
+	AvailableQty int             `gorm:"type:int;not null;default:0"`
+	MinOrderQty  int             `gorm:"type:int;not null;default:1" json:"-"`
+	ExpiryDate   *time.Time      `gorm:"type:date"`
+	IsActive     bool            `gorm:"type:boolean;not null;default:true;index:uq_wholesaler_medicine_active_offer,priority:3,unique;index:idx_offers_med_active_updated,priority:2;index:idx_offers_wh_active,priority:2"`
+	CreatedAt    time.Time       `gorm:"type:timestamptz;not null;default:now()"`
+	UpdatedAt    time.Time       `gorm:"type:timestamptz;not null;default:now();index:idx_offers_med_active_updated,priority:3;sort:desc"`
 }
 
 func (WholesalerOffer) TableName() string { return "wholesaler_offers" }

@@ -224,6 +224,22 @@ definitions:
     - MedicineCandidateStatusPending
     - MedicineCandidateStatusApproved
     - MedicineCandidateStatusRejected
+  model.OrderStatus:
+    enum:
+    - CREATED
+    - CONFIRMED
+    - PACKING
+    - SHIPPED
+    - DELIVERED
+    - CANCELED
+    type: string
+    x-enum-varnames:
+    - OrderStatusCreated
+    - OrderStatusConfirmed
+    - OrderStatusPacking
+    - OrderStatusShipped
+    - OrderStatusDelivered
+    - OrderStatusCanceled
   model.UserRole:
     enum:
     - PHARMACY
@@ -238,8 +254,6 @@ definitions:
     - UserRoleAdmin
   offers.UpsertOfferInput:
     properties:
-      available_qty:
-        type: integer
       currency:
         type: string
       display_price:
@@ -249,6 +263,62 @@ definitions:
       is_active:
         type: boolean
       medicine_id:
+        type: string
+    type: object
+  orders.OrderItemSummary:
+    properties:
+      BrandName:
+        type: string
+      Form:
+        type: string
+      GenericName:
+        type: string
+      ID:
+        type: string
+      LineTotal:
+        type: number
+      MedicineID:
+        type: string
+      Qty:
+        type: integer
+      Strength:
+        type: string
+      UnitPrice:
+        type: number
+    type: object
+  orders.OrderSummary:
+    properties:
+      CreatedAt:
+        type: string
+      Currency:
+        type: string
+      ID:
+        type: string
+      Items:
+        items:
+          $ref: '#/definitions/orders.OrderItemSummary'
+        type: array
+      PharmacyAddress:
+        type: string
+      PharmacyCity:
+        type: string
+      PharmacyEmail:
+        type: string
+      PharmacyID:
+        type: string
+      PharmacyLicenseNo:
+        type: string
+      PharmacyName:
+        type: string
+      PharmacyPhone:
+        type: string
+      Status:
+        $ref: '#/definitions/model.OrderStatus'
+      TotalAmount:
+        type: number
+      UpdatedAt:
+        type: string
+      WholesalerID:
         type: string
     type: object
   payments.WebhookInput:
@@ -1169,8 +1239,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/orders.OrderSummary'
         "400":
           description: Bad Request
           schema:
@@ -1200,8 +1269,7 @@ paths:
         "201":
           description: Created
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/orders.OrderSummary'
         "400":
           description: Bad Request
           schema:
@@ -1520,7 +1588,7 @@ paths:
           description: SSE stream
           schema:
             type: string
-      summary: SSE stream for offer and inventory updates
+      summary: SSE stream for offer, inventory, and order status updates
       tags:
       - stream
 schemes:

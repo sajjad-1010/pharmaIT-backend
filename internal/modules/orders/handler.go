@@ -36,7 +36,7 @@ func (h *Handler) RegisterRoutes(api fiber.Router, authMW fiber.Handler) {
 // @Accept json
 // @Produce json
 // @Param request body object true "order payload"
-// @Success 201 {object} map[string]interface{}
+// @Success 201 {object} OrderSummary
 // @Failure 400 {object} response.ErrorEnvelope
 // @Failure 401 {object} response.ErrorEnvelope
 // @Failure 403 {object} response.ErrorEnvelope
@@ -85,7 +85,7 @@ func (h *Handler) create(c *fiber.Ctx) error {
 // @Produce json
 // @Param limit query int false "limit"
 // @Param cursor query string false "cursor"
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} OrderSummary
 // @Failure 400 {object} response.ErrorEnvelope
 // @Failure 401 {object} response.ErrorEnvelope
 // @Router /orders/ [get]

@@ -10,6 +10,7 @@ import (
 	appErr "pharmalink/server/internal/common/errors"
 	"pharmalink/server/internal/db/model"
 	"pharmalink/server/internal/http/pagination"
+	"pharmalink/server/internal/modules/inventory"
 	"pharmalink/server/internal/modules/outbox"
 
 	"github.com/google/uuid"
@@ -19,16 +20,18 @@ import (
 )
 
 type Service struct {
-	db     *gorm.DB
-	redis  *redis.Client
-	outbox *outbox.Service
+	db           *gorm.DB
+	redis        *redis.Client
+	outbox       *outbox.Service
+	inventorySvc *inventory.Service
 }
 
-func NewService(db *gorm.DB, redis *redis.Client, outboxSvc *outbox.Service) *Service {
+func NewService(db *gorm.DB, redis *redis.Client, outboxSvc *outbox.Service, inventorySvc *inventory.Service) *Service {
 	return &Service{
-		db:     db,
-		redis:  redis,
-		outbox: outboxSvc,
+		db:           db,
+		redis:        redis,
+		outbox:       outboxSvc,
+		inventorySvc: inventorySvc,
 	}
 }
 
@@ -80,7 +83,6 @@ type UpsertOfferInput struct {
 	MedicineID   uuid.UUID `json:"medicine_id"`
 	DisplayPrice string    `json:"display_price"`
 	Currency     string    `json:"currency"`
-	AvailableQty int       `json:"available_qty"`
 	ExpiryDate   *string   `json:"expiry_date"`
 	IsActive     *bool     `json:"is_active"`
 }
@@ -90,8 +92,8 @@ func (s *Service) Create(ctx context.Context, wholesalerID uuid.UUID, input Upse
 	if err != nil || price.IsNegative() {
 		return nil, appErr.BadRequest("INVALID_DISPLAY_PRICE", "display_price must be non-negative decimal", nil)
 	}
-	if input.AvailableQty < 0 {
-		return nil, appErr.BadRequest("INVALID_AVAILABLE_QTY", "available_qty cannot be negative", nil)
+	if s.inventorySvc == nil {
+		return nil, appErr.Internal("inventory service is not configured")
 	}
 
 	offer := &model.WholesalerOffer{
@@ -100,7 +102,7 @@ func (s *Service) Create(ctx context.Context, wholesalerID uuid.UUID, input Upse
 		MedicineID:   input.MedicineID,
 		DisplayPrice: price,
 		Currency:     strings.ToUpper(strings.TrimSpace(input.Currency)),
-		AvailableQty: input.AvailableQty,
+		AvailableQty: 0,
 		MinOrderQty:  1,
 		IsActive:     true,
 	}
@@ -116,6 +118,12 @@ func (s *Service) Create(ctx context.Context, wholesalerID uuid.UUID, input Upse
 	}
 
 	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		available, err := s.inventorySvc.CurrentAvailable(ctx, tx, wholesalerID, input.MedicineID)
+		if err != nil {
+			return err
+		}
+		offer.AvailableQty = available
+
 		if err := tx.Create(offer).Error; err != nil {
 			if strings.Contains(strings.ToLower(err.Error()), "uq_wholesaler_medicine_active_offer") {
 				return appErr.Conflict("ACTIVE_OFFER_EXISTS", "active offer already exists for this medicine", nil)
@@ -146,6 +154,10 @@ func (s *Service) Create(ctx context.Context, wholesalerID uuid.UUID, input Upse
 }
 
 func (s *Service) Update(ctx context.Context, wholesalerID, offerID uuid.UUID, input UpsertOfferInput) (*model.WholesalerOffer, error) {
+	if s.inventorySvc == nil {
+		return nil, appErr.Internal("inventory service is not configured")
+	}
+
 	var offer model.WholesalerOffer
 	if err := s.db.WithContext(ctx).
 		First(&offer, "id = ? AND wholesaler_id = ?", offerID, wholesalerID).Error; err != nil {
@@ -165,9 +177,6 @@ func (s *Service) Update(ctx context.Context, wholesalerID, offerID uuid.UUID, i
 	}
 	if strings.TrimSpace(input.Currency) != "" {
 		updates["currency"] = strings.ToUpper(strings.TrimSpace(input.Currency))
-	}
-	if input.AvailableQty >= 0 {
-		updates["available_qty"] = input.AvailableQty
 	}
 	if input.IsActive != nil {
 		updates["is_active"] = *input.IsActive
@@ -189,6 +198,12 @@ func (s *Service) Update(ctx context.Context, wholesalerID, offerID uuid.UUID, i
 	}
 
 	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		available, err := s.inventorySvc.CurrentAvailable(ctx, tx, wholesalerID, offer.MedicineID)
+		if err != nil {
+			return err
+		}
+		updates["available_qty"] = available
+
 		if err := tx.Model(&model.WholesalerOffer{}).
 			Where("id = ? AND wholesaler_id = ?", offerID, wholesalerID).
 			Updates(updates).Error; err != nil {

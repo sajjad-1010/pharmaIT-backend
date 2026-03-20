@@ -15,6 +15,7 @@ import (
 
 type seedUser struct {
 	Identifier string
+	Phone      string
 	Password   string
 	Role       model.UserRole
 	Name       string
@@ -23,7 +24,7 @@ type seedUser struct {
 func EnsureDevSeedUsers(ctx context.Context, db *gorm.DB, log zerolog.Logger) error {
 	seeds := []seedUser{
 		{Identifier: "admin", Password: "admin", Role: model.UserRoleAdmin, Name: "Admin User"},
-		{Identifier: "pharmacy", Password: "pharmacy", Role: model.UserRolePharmacy, Name: "Test Pharmacy"},
+		{Identifier: "pharmacy", Phone: "+992900000001", Password: "pharmacy", Role: model.UserRolePharmacy, Name: "Test Pharmacy"},
 		{Identifier: "wholesaler", Password: "wholesaler", Role: model.UserRoleWholesaler, Name: "Test Wholesaler"},
 		{Identifier: "manufacturer", Password: "manufacturer", Role: model.UserRoleManufacturer, Name: "Test Manufacturer"},
 	}
@@ -52,6 +53,7 @@ func upsertSeedUser(ctx context.Context, db *gorm.DB, seed seedUser) error {
 			Where("id = ?", user.ID).
 			Updates(map[string]interface{}{
 				"password_hash": hash,
+				"phone":         strPtr(seed.Phone),
 				"role":          seed.Role,
 				"status":        model.UserStatusActive,
 				"updated_at":    time.Now().UTC(),
@@ -64,7 +66,7 @@ func upsertSeedUser(ctx context.Context, db *gorm.DB, seed seedUser) error {
 		user = model.User{
 			ID:           id,
 			Email:        strPtr(seed.Identifier),
-			Phone:        nil,
+			Phone:        strPtr(seed.Phone),
 			PasswordHash: hash,
 			Role:         seed.Role,
 			Status:       model.UserStatusActive,
@@ -83,10 +85,17 @@ func ensureProfile(ctx context.Context, db *gorm.DB, userID uuid.UUID, seed seed
 	case model.UserRolePharmacy:
 		var row model.Pharmacy
 		if err := db.WithContext(ctx).First(&row, "user_id = ?", userID).Error; err == nil {
-			return nil
+			return db.WithContext(ctx).Model(&model.Pharmacy{}).
+				Where("user_id = ?", userID).
+				Updates(map[string]interface{}{
+					"name":       seed.Name,
+					"city":       strPtr("Test City"),
+					"address":    strPtr("Test Address"),
+					"license_no": strPtr("PHARM-TEST-001"),
+				}).Error
 		}
 		return db.WithContext(ctx).Create(&model.Pharmacy{
-			UserID: userID, Name: seed.Name, City: strPtr("Test City"), Address: strPtr("Test Address"),
+			UserID: userID, Name: seed.Name, City: strPtr("Test City"), Address: strPtr("Test Address"), LicenseNo: strPtr("PHARM-TEST-001"),
 		}).Error
 	case model.UserRoleWholesaler:
 		var row model.Wholesaler
@@ -116,4 +125,3 @@ func strPtr(s string) *string {
 	}
 	return &v
 }
-

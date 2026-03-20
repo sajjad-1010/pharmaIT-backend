@@ -81,11 +81,11 @@ func main() {
 	catalogSvc := catalog.NewService(dbConn, redisClient)
 	catalogHandler := catalog.NewHandler(catalogSvc)
 
-	offersSvc := offers.NewService(dbConn, redisClient, outboxSvc)
-	offersHandler := offers.NewHandler(offersSvc)
-
 	inventorySvc := inventory.NewService(dbConn, outboxSvc)
 	inventoryHandler := inventory.NewHandler(inventorySvc)
+
+	offersSvc := offers.NewService(dbConn, redisClient, outboxSvc, inventorySvc)
+	offersHandler := offers.NewHandler(offersSvc)
 
 	ordersSvc := orders.NewService(dbConn, inventorySvc, outboxSvc)
 	ordersHandler := orders.NewHandler(ordersSvc)

@@ -23,7 +23,7 @@ func (h *Handler) RegisterRoutes(api fiber.Router) {
 }
 
 // streamOffers godoc
-// @Summary SSE stream for offer and inventory updates
+// @Summary SSE stream for offer, inventory, and order status updates
 // @Tags stream
 // @Produce text/event-stream
 // @Success 200 {string} string "SSE stream"

@@ -18,11 +18,11 @@ import (
 )
 
 type OutboxProcessor struct {
-	outboxSvc *outbox.Service
-	redis     *redis.Client
-	broker    *sse.Broker
-	enqueuer  *asynqjobs.Enqueuer
-	log       zerolog.Logger
+	outboxSvc  *outbox.Service
+	redis      *redis.Client
+	broker     *sse.Broker
+	enqueuer   *asynqjobs.Enqueuer
+	log        zerolog.Logger
 	sseChannel string
 }
 
@@ -34,11 +34,11 @@ func NewOutboxProcessor(
 	log zerolog.Logger,
 ) *OutboxProcessor {
 	return &OutboxProcessor{
-		outboxSvc: outboxSvc,
-		redis:     redisClient,
-		broker:    broker,
-		enqueuer:  enqueuer,
-		log:       log,
+		outboxSvc:  outboxSvc,
+		redis:      redisClient,
+		broker:     broker,
+		enqueuer:   enqueuer,
+		log:        log,
 		sseChannel: "sse_offers",
 	}
 }
@@ -100,6 +100,7 @@ func (p *OutboxProcessor) handleEvent(ctx context.Context, eventType string, pay
 		p.publishRealtime(ctx, "inventory.changed", payload)
 	case "order.status_changed":
 		p.invalidateByPrefix(ctx, "orders:")
+		p.publishRealtime(ctx, "order.status_changed", payload)
 	case "payment.verified", "access.updated":
 		p.invalidateByPrefix(ctx, "access:")
 	case "rare.bid_created", "rare.bid_selected":

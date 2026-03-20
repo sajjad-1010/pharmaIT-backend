@@ -156,13 +156,15 @@ curl -X POST http://localhost/api/v1/offers \
     "medicine_id":"<MEDICINE_ID>",
     "display_price":"10.5000",
     "currency":"TJS",
-    "available_qty":120,
     "expiry_date":"2027-09-15",
     "is_active":true
   }'
 ```
 
 Offer contract note:
+- `available_qty` is not accepted by the public offer API anymore.
+- Stock changes must go through `POST /api/v1/inventory/movements`.
+- Existing offers should be backfilled from ledger once after deployment so stale stock values do not remain visible.
 - `min_order_qty` is fixed internally to `1` and is not part of the public offer API.
 - `delivery_eta_hours` was removed from regular offers. Keep ETA only in rare bid submissions.
 
@@ -211,6 +213,25 @@ curl -X POST http://localhost/api/v1/orders \
 curl "http://localhost/api/v1/orders?limit=20&cursor=" \
   -H "Authorization: Bearer <ACCESS_TOKEN>"
 ```
+
+Order response note:
+- order objects now include:
+  - `PharmacyName`
+  - `PharmacyCity`
+  - `PharmacyAddress`
+  - `PharmacyLicenseNo`
+  - `PharmacyEmail`
+  - `PharmacyPhone`
+- order objects in list responses now also include `Items[]` with:
+  - `MedicineID`
+  - `GenericName`
+  - `BrandName`
+  - `Form`
+  - `Strength`
+  - `Qty`
+  - `UnitPrice`
+  - `LineTotal`
+- wholesaler UIs can use these fields directly instead of deriving a fallback from `PharmacyID`.
 
 ### Update Order Status
 ```bash
@@ -312,12 +333,13 @@ curl -N http://localhost/api/v1/stream/offers
 Expected events:
 - `offer.updated`
 - `inventory.changed`
+- `order.status_changed`
 
 ## 10) Flutter Testing Checklist
 1. Login and store access/refresh tokens securely.
 2. Call `/auth/me` and route UI by role.
 3. Test cursor pagination on `/medicines`, `/offers`, `/orders`.
-4. Open SSE stream and verify live updates on offer/stock changes.
+4. Open SSE stream and verify live updates on offer/stock/order-status changes.
 5. Create order and check stock reduction.
 6. Run payment flow and confirm access extension.
 7. Verify standard backend error format handling in UI.

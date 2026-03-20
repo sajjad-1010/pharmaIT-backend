@@ -142,7 +142,30 @@ Webhook signature transport:
 7. `orders` + `order_items` persisted.
 8. Outbox events written and `NOTIFY outbox_new` sent.
 
+Order response note:
+- order list/detail responses include pharmacy profile fields resolved from `pharmacies` + `users`:
+  - `PharmacyName`
+  - `PharmacyCity`
+  - `PharmacyAddress`
+  - `PharmacyLicenseNo`
+  - `PharmacyEmail`
+  - `PharmacyPhone`
+- order list responses also include `Items[]` enriched from `order_items` + `medicines`:
+  - `MedicineID`
+  - `GenericName`
+  - `BrandName`
+  - `Form`
+  - `Strength`
+  - `Qty`
+  - `UnitPrice`
+  - `LineTotal`
+- wholesaler clients should display these fields when present instead of deriving labels from `PharmacyID`.
+
 Offer contract note:
+- `wholesaler_offers.available_qty` is a denormalized cache field populated from `inventory_movements`.
+- The public `/offers` API no longer accepts direct stock changes.
+- Stock must change only through inventory movement endpoints/services.
+- Existing offer rows must be backfilled from ledger when this rule changes, otherwise UI stock can remain stale.
 - `wholesaler_offers.min_order_qty` still exists internally in the database, but it is fixed to `1`.
 - The public `/offers` API no longer accepts or returns `min_order_qty`.
 - `delivery_eta_hours` was removed from regular offers.
@@ -166,7 +189,7 @@ Offer contract note:
 ### SSE
 1. Client opens `GET /api/v1/stream/offers`.
 2. API subscribes to Redis channel (`sse_offers`) and forwards to in-memory broker.
-3. Worker publishes `offer.updated` and `inventory.changed` events to Redis pubsub from outbox processor.
+3. Worker publishes `offer.updated`, `inventory.changed`, and `order.status_changed` events to Redis pubsub from outbox processor.
 
 ### Medicine Import + Admin Review
 1. Wholesaler app parses Excel row and sends it to `POST /api/v1/medicines/validate`.

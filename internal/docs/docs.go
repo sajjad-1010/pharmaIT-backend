@@ -1368,8 +1368,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/orders.OrderSummary"
                         }
                     },
                     "400": {
@@ -1417,8 +1416,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/orders.OrderSummary"
                         }
                     },
                     "400": {
@@ -1909,7 +1907,7 @@ const docTemplate = `{
                 "tags": [
                     "stream"
                 ],
-                "summary": "SSE stream for offer and inventory updates",
+                "summary": "SSE stream for offer, inventory, and order status updates",
                 "responses": {
                     "200": {
                         "description": "SSE stream",
@@ -2259,6 +2257,25 @@ const docTemplate = `{
                 "MedicineCandidateStatusRejected"
             ]
         },
+        "model.OrderStatus": {
+            "type": "string",
+            "enum": [
+                "CREATED",
+                "CONFIRMED",
+                "PACKING",
+                "SHIPPED",
+                "DELIVERED",
+                "CANCELED"
+            ],
+            "x-enum-varnames": [
+                "OrderStatusCreated",
+                "OrderStatusConfirmed",
+                "OrderStatusPacking",
+                "OrderStatusShipped",
+                "OrderStatusDelivered",
+                "OrderStatusCanceled"
+            ]
+        },
         "model.UserRole": {
             "type": "string",
             "enum": [
@@ -2277,9 +2294,6 @@ const docTemplate = `{
         "offers.UpsertOfferInput": {
             "type": "object",
             "properties": {
-                "available_qty": {
-                    "type": "integer"
-                },
                 "currency": {
                     "type": "string"
                 },
@@ -2293,6 +2307,91 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "medicine_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "orders.OrderItemSummary": {
+            "type": "object",
+            "properties": {
+                "BrandName": {
+                    "type": "string"
+                },
+                "Form": {
+                    "type": "string"
+                },
+                "GenericName": {
+                    "type": "string"
+                },
+                "ID": {
+                    "type": "string"
+                },
+                "LineTotal": {
+                    "type": "number"
+                },
+                "MedicineID": {
+                    "type": "string"
+                },
+                "Qty": {
+                    "type": "integer"
+                },
+                "Strength": {
+                    "type": "string"
+                },
+                "UnitPrice": {
+                    "type": "number"
+                }
+            }
+        },
+        "orders.OrderSummary": {
+            "type": "object",
+            "properties": {
+                "CreatedAt": {
+                    "type": "string"
+                },
+                "Currency": {
+                    "type": "string"
+                },
+                "ID": {
+                    "type": "string"
+                },
+                "Items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/orders.OrderItemSummary"
+                    }
+                },
+                "PharmacyAddress": {
+                    "type": "string"
+                },
+                "PharmacyCity": {
+                    "type": "string"
+                },
+                "PharmacyEmail": {
+                    "type": "string"
+                },
+                "PharmacyID": {
+                    "type": "string"
+                },
+                "PharmacyLicenseNo": {
+                    "type": "string"
+                },
+                "PharmacyName": {
+                    "type": "string"
+                },
+                "PharmacyPhone": {
+                    "type": "string"
+                },
+                "Status": {
+                    "$ref": "#/definitions/model.OrderStatus"
+                },
+                "TotalAmount": {
+                    "type": "number"
+                },
+                "UpdatedAt": {
+                    "type": "string"
+                },
+                "WholesalerID": {
                     "type": "string"
                 }
             }

@@ -68,6 +68,17 @@ If Swagger is empty:
 swag init -g cmd/api/main.go -o internal/docs
 ```
 
+## Push Notifications
+Default local mode:
+- `NOTIFICATION_PUSH_PROVIDER=noop`
+
+For real Android/Web push with FCM:
+- `NOTIFICATION_PUSH_PROVIDER=fcm`
+- `FCM_CREDENTIALS_FILE=/path/to/firebase-service-account.json`
+or
+- `FCM_CREDENTIALS_JSON=<raw service account json>`
+- `FCM_DRY_RUN=false`
+
 ## Stop
 ```bash
 docker compose down

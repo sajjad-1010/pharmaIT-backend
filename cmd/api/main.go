@@ -16,15 +16,12 @@ import (
 	_ "pharmalink/server/internal/docs"
 	"pharmalink/server/internal/http/middleware"
 	"pharmalink/server/internal/logger"
-	"pharmalink/server/internal/modules/catalog"
-	"pharmalink/server/internal/modules/discounts"
 	"pharmalink/server/internal/modules/inventory"
-	"pharmalink/server/internal/modules/manufacturer"
+	"pharmalink/server/internal/modules/notifications"
 	"pharmalink/server/internal/modules/offers"
 	"pharmalink/server/internal/modules/orders"
 	"pharmalink/server/internal/modules/outbox"
 	"pharmalink/server/internal/modules/payments"
-	"pharmalink/server/internal/modules/rare"
 	"pharmalink/server/internal/modules/sse"
 	"pharmalink/server/internal/modules/users"
 	"pharmalink/server/internal/rbac"
@@ -74,33 +71,25 @@ func main() {
 	authSvc := auth.NewService(cfg.JWT)
 	outboxSvc := outbox.NewService(dbConn, cfg.OutboxChannel)
 	sseBroker := sse.NewBroker()
+	pushProvider := notifications.NewPushProvider(cfg.Notification, log)
+	notificationSvc := notifications.NewService(dbConn, pushProvider, log)
 
 	userSvc := users.NewService(dbConn, authSvc)
 	userHandler := users.NewHandler(userSvc)
 
-	catalogSvc := catalog.NewService(dbConn, redisClient)
-	catalogHandler := catalog.NewHandler(catalogSvc)
-
 	inventorySvc := inventory.NewService(dbConn, outboxSvc)
 	inventoryHandler := inventory.NewHandler(inventorySvc)
 
-	offersSvc := offers.NewService(dbConn, redisClient, outboxSvc, inventorySvc)
+	offersSvc := offers.NewService(dbConn, redisClient, outboxSvc)
 	offersHandler := offers.NewHandler(offersSvc)
 
 	ordersSvc := orders.NewService(dbConn, inventorySvc, outboxSvc)
 	ordersHandler := orders.NewHandler(ordersSvc)
 
-	rareSvc := rare.NewService(dbConn, outboxSvc)
-	rareHandler := rare.NewHandler(rareSvc)
-
-	manufacturerSvc := manufacturer.NewService(dbConn, outboxSvc)
-	manufacturerHandler := manufacturer.NewHandler(manufacturerSvc)
-
-	discountSvc := discounts.NewService(dbConn, outboxSvc)
-	discountHandler := discounts.NewHandler(discountSvc)
-
 	paymentSvc := payments.NewService(dbConn, cfg.Payment, outboxSvc)
 	paymentHandler := payments.NewHandler(paymentSvc)
+
+	notificationHandler := notifications.NewHandler(notificationSvc)
 
 	sseHandler := sse.NewHandler(sse.NewStreamHandler(sseBroker))
 
@@ -164,14 +153,11 @@ func main() {
 	wholesalerOnly := rbac.Allow(model.UserRoleWholesaler)
 
 	userHandler.RegisterRoutes(v1, authMW, adminOnly)
-	catalogHandler.RegisterRoutes(v1, authMW, adminOnly, wholesalerOnly)
 	offersHandler.RegisterRoutes(v1, authMW, wholesalerOnly)
 	inventoryHandler.RegisterRoutes(v1, authMW, wholesalerOnly)
 	ordersHandler.RegisterRoutes(v1, authMW)
-	rareHandler.RegisterRoutes(v1, authMW)
-	manufacturerHandler.RegisterRoutes(v1, authMW)
-	discountHandler.RegisterRoutes(v1, authMW, wholesalerOnly)
 	paymentHandler.RegisterRoutes(v1, authMW)
+	notificationHandler.RegisterRoutes(v1, authMW)
 	sseHandler.RegisterRoutes(v1)
 
 	go func() {

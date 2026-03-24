@@ -20,8 +20,9 @@ type Config struct {
 
 	JWT JWTConfig
 
-	Postgres PostgresConfig
-	Redis    RedisConfig
+	Postgres     PostgresConfig
+	Redis        RedisConfig
+	Notification NotificationConfig
 
 	Payment PaymentConfig
 
@@ -88,6 +89,13 @@ type PaymentConfig struct {
 	WebhookSecret    string
 }
 
+type NotificationConfig struct {
+	PushProvider       string
+	FCMCredentialsFile string
+	FCMCredentialsJSON string
+	FCMDryRun          bool
+}
+
 func Load() (Config, error) {
 	v := viper.New()
 	v.SetConfigName(".env")
@@ -134,6 +142,12 @@ func Load() (Config, error) {
 			Password: v.GetString("REDIS_PASSWORD"),
 			DB:       v.GetInt("REDIS_DB"),
 		},
+		Notification: NotificationConfig{
+			PushProvider:       strings.TrimSpace(v.GetString("NOTIFICATION_PUSH_PROVIDER")),
+			FCMCredentialsFile: strings.TrimSpace(v.GetString("FCM_CREDENTIALS_FILE")),
+			FCMCredentialsJSON: strings.TrimSpace(v.GetString("FCM_CREDENTIALS_JSON")),
+			FCMDryRun:          v.GetBool("FCM_DRY_RUN"),
+		},
 		Payment: PaymentConfig{
 			AccessGrantHours: v.GetInt("PAYMENT_ACCESS_GRANT_HOURS"),
 			AccessFee:        v.GetString("PAYMENT_ACCESS_FEE"),
@@ -172,6 +186,8 @@ func setDefaults(v *viper.Viper) {
 
 	v.SetDefault("REDIS_ADDR", "localhost:6379")
 	v.SetDefault("REDIS_DB", 0)
+	v.SetDefault("NOTIFICATION_PUSH_PROVIDER", "noop")
+	v.SetDefault("FCM_DRY_RUN", false)
 
 	v.SetDefault("PAYMENT_ACCESS_GRANT_HOURS", 24)
 	v.SetDefault("PAYMENT_ACCESS_FEE", "3")

@@ -31,7 +31,6 @@ func NewService(db *gorm.DB, outboxSvc *outbox.Service) *Service {
 type CreateRequestInput struct {
 	WholesalerID      uuid.UUID  `json:"wholesaler_id"`
 	ManufacturerID    uuid.UUID  `json:"manufacturer_id"`
-	MedicineID        *uuid.UUID `json:"medicine_id"`
 	RequestedNameText *string    `json:"requested_name_text"`
 	Qty               int        `json:"qty"`
 	NeededBy          *time.Time `json:"needed_by"`
@@ -41,15 +40,14 @@ func (s *Service) CreateRequest(ctx context.Context, input CreateRequestInput) (
 	if input.Qty <= 0 {
 		return nil, appErr.BadRequest("INVALID_QTY", "qty must be > 0", nil)
 	}
-	if input.MedicineID == nil && strings.TrimSpace(ptrValue(input.RequestedNameText)) == "" {
-		return nil, appErr.BadRequest("MISSING_TARGET", "medicine_id or requested_name_text is required", nil)
+	if strings.TrimSpace(ptrValue(input.RequestedNameText)) == "" {
+		return nil, appErr.BadRequest("MISSING_TARGET", "requested_name_text is required", nil)
 	}
 
 	row := &model.ManufacturerRequest{
 		ID:                uuid.New(),
 		WholesalerID:      input.WholesalerID,
 		ManufacturerID:    input.ManufacturerID,
-		MedicineID:        input.MedicineID,
 		RequestedNameText: trimPtr(input.RequestedNameText),
 		Qty:               input.Qty,
 		NeededBy:          input.NeededBy,
@@ -63,13 +61,12 @@ func (s *Service) CreateRequest(ctx context.Context, input CreateRequestInput) (
 		out, err := s.outbox.Write(ctx, tx, outbox.Event{
 			Type: "manufacturer.request_created",
 			Payload: map[string]interface{}{
-				"request_id":       row.ID,
-				"wholesaler_id":    row.WholesalerID,
-				"manufacturer_id":  row.ManufacturerID,
-				"medicine_id":      row.MedicineID,
-				"requested_name":   row.RequestedNameText,
-				"qty":              row.Qty,
-				"status":           row.Status,
+				"request_id":      row.ID,
+				"wholesaler_id":   row.WholesalerID,
+				"manufacturer_id": row.ManufacturerID,
+				"requested_name":  row.RequestedNameText,
+				"qty":             row.Qty,
+				"status":          row.Status,
 			},
 		})
 		if err != nil {
@@ -167,13 +164,13 @@ func (s *Service) CreateQuote(ctx context.Context, input CreateQuoteInput) (*mod
 		out, err := s.outbox.Write(ctx, tx, outbox.Event{
 			Type: "manufacturer.quote_created",
 			Payload: map[string]interface{}{
-				"quote_id":          row.ID,
-				"request_id":        row.RequestID,
-				"manufacturer_id":   row.ManufacturerID,
-				"unit_price_final":  row.UnitPriceFinal.StringFixed(4),
-				"currency":          row.Currency,
-				"lead_time_days":    row.LeadTimeDays,
-				"valid_until":       row.ValidUntil,
+				"quote_id":         row.ID,
+				"request_id":       row.RequestID,
+				"manufacturer_id":  row.ManufacturerID,
+				"unit_price_final": row.UnitPriceFinal.StringFixed(4),
+				"currency":         row.Currency,
+				"lead_time_days":   row.LeadTimeDays,
+				"valid_until":      row.ValidUntil,
 			},
 		})
 		if err != nil {
@@ -208,4 +205,3 @@ func trimPtr(v *string) *string {
 	}
 	return &t
 }
-

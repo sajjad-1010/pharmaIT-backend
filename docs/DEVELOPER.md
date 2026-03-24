@@ -29,19 +29,17 @@ deploy/nginx/    # gateway/rate limiting config
 ```
 
 ## 1.1) Recent Catalog Refactor
-- `medicines` no longer depends on platform `manufacturer` accounts.
-- `medicines.manufacturer_id` was removed by migration `000003_decouple_medicines_from_manufacturers`.
-- Canonical medicine identity is now based on:
-  - `generic_name`
-  - `brand_name`
-  - `form`
-  - `strength`
-- `brand_name` is still technically optional, but validation now always returns a warning when it is missing.
-- Admin approval of a new `medicine_candidate` no longer requires `manufacturer_id`.
-- Approving a candidate now does one of two things:
-  - link the candidate to an existing `medicine`
-  - create a new `medicine` directly from the candidate payload
-- After approve, no offer is auto-created. The wholesaler must still create an offer separately.
+- The active runtime model is now offer-centric instead of medicine-centric.
+- The primary searchable entity is `wholesaler_offers`.
+- Required offer fields:
+  - `name`
+  - `display_price`
+- Optional offer fields:
+  - `producer`
+  - `expiry_date`
+- Search is performed directly against offer `name`.
+- Duplicate prevention at catalog level was intentionally removed.
+- Each imported row is stored as its own offer with a generated backend `id`.
 
 ## 2) Conventions
 
@@ -102,33 +100,15 @@ Webhook signature transport:
 - Signature payload: `invoice_id:transaction_id:STATUS_UPPER`
 - Secret: `PAYMENT_WEBHOOK_SECRET` (raw string from env)
 
-### Catalog Identity + Import Review
-- Catalog medicines are decoupled from platform `manufacturer` accounts.
-- Canonical medicine identity is normalized:
-  - `generic_name`
-  - `brand_name`
-  - `form`
-  - `strength`
-- Normalization rules:
-  - trim outer whitespace
-  - lowercase
-  - collapse repeated whitespace
-  - punctuation/symbols are reduced to spaces
-- Backend enforces duplicate prevention on the normalized identity at DB level.
-- Wholesaler Excel/app import flow must call validation before creating an offer for a new medicine.
-- If a medicine is not matched, the wholesaler submits a `medicine_candidate` instead of creating a catalog medicine directly.
-- Candidate review statuses:
-  - `PENDING`
-  - `APPROVED`
-  - `REJECTED`
-- Validation response statuses:
-  - `MATCHED`
-  - `AMBIGUOUS`
-  - `SUGGESTED_MATCH`
-  - `NEW_MEDICINE`
-  - `PENDING_REVIEW`
-- Validation warnings:
-  - `BRAND_NAME_RECOMMENDED`: backend allows missing `brand_name`, but always warns because it materially improves matching accuracy and duplicate detection.
+### Offer Import Model
+- Excel rows are imported as wholesaler offers.
+- Required fields:
+  - `name`
+  - `display_price`
+- Optional fields:
+  - `producer`
+  - `expiry_date`
+- The backend does not attempt medicine matching, deduplication, or admin review.
 
 ## 3) Core Workflows
 
@@ -136,7 +116,7 @@ Webhook signature transport:
 1. Pharmacy creates order.
 2. API starts DB transaction.
 3. Offer rows are locked with `SELECT ... FOR UPDATE`.
-4. Available stock is computed from `inventory_movements`.
+4. Available stock is computed from `inventory_movements` by `offer_id`.
 5. Reservation movement (`RESERVED`) is inserted.
 6. `wholesaler_offers.available_qty` cache field is updated.
 7. `orders` + `order_items` persisted.
@@ -150,12 +130,10 @@ Order response note:
   - `PharmacyLicenseNo`
   - `PharmacyEmail`
   - `PharmacyPhone`
-- order list responses also include `Items[]` enriched from `order_items` + `medicines`:
-  - `MedicineID`
-  - `GenericName`
-  - `BrandName`
-  - `Form`
-  - `Strength`
+- order list responses also include `Items[]` from `order_items` snapshots:
+  - `OfferID`
+  - `ItemName`
+  - `Producer`
   - `Qty`
   - `UnitPrice`
   - `LineTotal`
@@ -165,11 +143,7 @@ Offer contract note:
 - `wholesaler_offers.available_qty` is a denormalized cache field populated from `inventory_movements`.
 - The public `/offers` API no longer accepts direct stock changes.
 - Stock must change only through inventory movement endpoints/services.
-- Existing offer rows must be backfilled from ledger when this rule changes, otherwise UI stock can remain stale.
-- `wholesaler_offers.min_order_qty` still exists internally in the database, but it is fixed to `1`.
-- The public `/offers` API no longer accepts or returns `min_order_qty`.
-- `delivery_eta_hours` was removed from regular offers.
-- ETA remains available on `rare_bids.delivery_eta_hours`.
+- Search is performed by `name`, not by `medicine_id`.
 
 ### Payment + Access Pass
 1. User creates invoice (`payments.status=PENDING`).
@@ -191,46 +165,46 @@ Offer contract note:
 2. API subscribes to Redis channel (`sse_offers`) and forwards to in-memory broker.
 3. Worker publishes `offer.updated`, `inventory.changed`, and `order.status_changed` events to Redis pubsub from outbox processor.
 
-### Medicine Import + Admin Review
-1. Wholesaler app parses Excel row and sends it to `POST /api/v1/medicines/validate`.
-2. Backend normalizes `generic_name`, `brand_name`, `form`, `strength`.
-3. Backend checks:
-   - exact normalized match in `medicines`
-   - existing pending duplicate in `medicine_candidates`
-   - close suggestions using trigram similarity
-   - warnings such as missing `brand_name`
-4. Decision order is strict:
-   - exact catalog match
-   - exact pending candidate match
-   - fuzzy catalog suggestions
-   - new medicine
-4. Backend returns one of:
-   - `MATCHED`: exact medicine found
-   - `SUGGESTED_MATCH`: no exact match, but one strong suggestion exists
-   - `AMBIGUOUS`: multiple close candidates exist
-   - `NEW_MEDICINE`: no close match found
-   - `PENDING_REVIEW`: same new medicine already waits for admin
-5. If an exact catalog match exists, backend returns immediately:
-   - `status = MATCHED`
-   - `matched_medicine != null`
-   - `warnings = []`
-   - `suggested_medicine = null`
-   - `candidates = []`
-   - `pending_candidate = null`
-6. If wholesaler confirms it is new, app sends `POST /api/v1/medicine-candidates`.
-7. Backend stores the row in `medicine_candidates` with status `PENDING`.
-8. Admin reviews candidate:
-   - approve by linking to an existing medicine
-   - approve by creating a new medicine
-   - reject with note
-9. Only after approval does the candidate become linked to a real `medicines.id`.
+### Notification Foundation
+1. API stores user-level notification preferences in `notification_preferences`.
+2. API stores device/browser registrations in `notification_devices`.
+3. Worker routes outbox business events into `notifications` inbox rows.
+4. Worker writes push delivery attempts into `notification_deliveries`.
+5. Push provider is configurable:
+   - `noop` for local/dev without provider credentials
+   - `fcm` for Android and Web push delivery
+6. Invalid/unregistered push tokens are deactivated automatically after provider failure detection.
 
-Catalog import API surface:
-- `POST /api/v1/medicines/validate`
-- `POST /api/v1/medicine-candidates`
-- `GET /api/v1/admin/medicine-candidates`
-- `POST /api/v1/admin/medicine-candidates/:id/approve`
-- `POST /api/v1/admin/medicine-candidates/:id/reject`
+Notification endpoints:
+- `GET /api/v1/notifications`
+- `GET /api/v1/notifications/devices`
+- `GET /api/v1/notifications/preferences`
+- `PUT /api/v1/notifications/preferences`
+- `POST /api/v1/notifications/devices`
+- `DELETE /api/v1/notifications/devices/:id`
+- `POST /api/v1/notifications/:id/read`
+- `POST /api/v1/notifications/read-all`
+
+Notification push config:
+- `NOTIFICATION_PUSH_PROVIDER=noop|fcm`
+- `FCM_CREDENTIALS_FILE=/path/to/service-account.json`
+- `FCM_CREDENTIALS_JSON=<raw service account json>`
+- `FCM_DRY_RUN=true|false`
+
+### Offer Import
+1. Wholesaler app parses an Excel row.
+2. Backend can receive:
+   - a single offer payload via `POST /api/v1/offers`
+   - or many rows via `POST /api/v1/offers/batch`
+3. Required fields are validated:
+   - `name`
+   - `display_price`
+4. Optional fields may be stored when present:
+   - `producer`
+   - `expiry_date`
+5. Batch import validates each row independently and returns row-level errors with zero-based indexes.
+6. Backend generates a new offer `id` and stores the row without catalog dedupe.
+7. Search later works directly on stored offer names.
 
 ## 4) Cursor Rules by Domain
 - Offers: `ORDER BY updated_at DESC, id DESC` and cursor `(updated_at, id) < (...)`
@@ -305,9 +279,7 @@ erDiagram
     uuid wholesaler_id FK
     uuid medicine_id FK
     decimal display_price
-    string currency
     int available_qty
-    int min_order_qty
     date expiry_date
     boolean is_active
     datetime updated_at
@@ -319,7 +291,6 @@ erDiagram
     uuid wholesaler_id FK
     string status
     decimal total_amount
-    string currency
     datetime created_at
   }
 
@@ -349,7 +320,6 @@ erDiagram
     uuid rare_request_id FK
     uuid wholesaler_id FK
     decimal price
-    string currency
     int available_qty
     int delivery_eta_hours
     string notes
@@ -374,7 +344,6 @@ erDiagram
     uuid request_id FK
     uuid manufacturer_id FK
     decimal unit_price_final
-    string currency
     int lead_time_days
     datetime valid_until
     string notes
@@ -402,7 +371,6 @@ erDiagram
     uuid id PK
     uuid user_id FK
     decimal amount
-    string currency
     string invoice_id
     string transaction_id
     string status
@@ -472,3 +440,5 @@ erDiagram
   WHOLESALERS ||--o{ INVENTORY_MOVEMENTS : "moves"
   MEDICINES ||--o{ INVENTORY_MOVEMENTS : "movement_for"
 ```
+
+

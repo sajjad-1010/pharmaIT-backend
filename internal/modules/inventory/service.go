@@ -15,8 +15,8 @@ import (
 )
 
 type Service struct {
-	db         *gorm.DB
-	outboxSvc  *outbox.Service
+	db        *gorm.DB
+	outboxSvc *outbox.Service
 }
 
 func NewService(db *gorm.DB, outboxSvc *outbox.Service) *Service {
@@ -28,7 +28,7 @@ func NewService(db *gorm.DB, outboxSvc *outbox.Service) *Service {
 
 type MovementInput struct {
 	WholesalerID uuid.UUID
-	MedicineID   uuid.UUID
+	OfferID      uuid.UUID
 	Type         model.InventoryMovementType
 	Qty          int
 	RefType      *string
@@ -45,13 +45,13 @@ func (s *Service) RecordMovement(ctx context.Context, input MovementInput) (*mod
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		offerLock := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("wholesaler_id = ? AND medicine_id = ? AND is_active = TRUE", input.WholesalerID, input.MedicineID).
+			Where("id = ? AND wholesaler_id = ? AND is_active = TRUE", input.OfferID, input.WholesalerID).
 			First(&model.WholesalerOffer{})
 		if offerLock.Error != nil && offerLock.Error != gorm.ErrRecordNotFound {
 			return appErr.Internal("failed to lock related offer")
 		}
 
-		currentBefore, err := s.CurrentAvailable(ctx, tx, input.WholesalerID, input.MedicineID)
+		currentBefore, err := s.CurrentAvailable(ctx, tx, input.WholesalerID, input.OfferID)
 		if err != nil {
 			return err
 		}
@@ -68,14 +68,14 @@ func (s *Service) RecordMovement(ctx context.Context, input MovementInput) (*mod
 		}
 		created = row
 
-		available, err := s.CurrentAvailable(ctx, tx, input.WholesalerID, input.MedicineID)
+		available, err := s.CurrentAvailable(ctx, tx, input.WholesalerID, input.OfferID)
 		if err != nil {
 			return err
 		}
 		newAvailable = available
 
 		if err := tx.Model(&model.WholesalerOffer{}).
-			Where("wholesaler_id = ? AND medicine_id = ? AND is_active = TRUE", input.WholesalerID, input.MedicineID).
+			Where("id = ? AND wholesaler_id = ? AND is_active = TRUE", input.OfferID, input.WholesalerID).
 			Update("available_qty", available).Error; err != nil {
 			return appErr.Internal("failed to sync offer available qty")
 		}
@@ -84,7 +84,7 @@ func (s *Service) RecordMovement(ctx context.Context, input MovementInput) (*mod
 			Type: "inventory.changed",
 			Payload: map[string]interface{}{
 				"wholesaler_id": input.WholesalerID,
-				"medicine_id":   input.MedicineID,
+				"offer_id":      input.OfferID,
 				"type":          input.Type,
 				"qty":           input.Qty,
 				"available_qty": available,
@@ -113,7 +113,7 @@ func (s *Service) AddMovement(ctx context.Context, tx *gorm.DB, input MovementIn
 	row := &model.InventoryMovement{
 		ID:           uuid.New(),
 		WholesalerID: input.WholesalerID,
-		MedicineID:   input.MedicineID,
+		OfferID:      input.OfferID,
 		Type:         input.Type,
 		Qty:          input.Qty,
 		RefType:      input.RefType,
@@ -132,7 +132,7 @@ func (s *Service) AddMovement(ctx context.Context, tx *gorm.DB, input MovementIn
 	return row, nil
 }
 
-func (s *Service) CurrentAvailable(ctx context.Context, tx *gorm.DB, wholesalerID, medicineID uuid.UUID) (int, error) {
+func (s *Service) CurrentAvailable(ctx context.Context, tx *gorm.DB, wholesalerID, offerID uuid.UUID) (int, error) {
 	exec := s.db.WithContext(ctx)
 	if tx != nil {
 		exec = tx.WithContext(ctx)
@@ -151,9 +151,9 @@ func (s *Service) CurrentAvailable(ctx context.Context, tx *gorm.DB, wholesalerI
             END
         ), 0)
         FROM inventory_movements
-        WHERE wholesaler_id = ? AND medicine_id = ?
+        WHERE wholesaler_id = ? AND offer_id = ?
     `
-	if err := exec.Raw(query, wholesalerID, medicineID).Scan(&available).Error; err != nil {
+	if err := exec.Raw(query, wholesalerID, offerID).Scan(&available).Error; err != nil {
 		return 0, appErr.Internal("failed to compute available inventory")
 	}
 
@@ -184,7 +184,7 @@ func (s *Service) ReserveForOrder(ctx context.Context, input ReserveInput) error
 			return appErr.Internal("failed to lock offer for reservation")
 		}
 
-		current, err := s.CurrentAvailable(ctx, tx, offer.WholesalerID, offer.MedicineID)
+		current, err := s.CurrentAvailable(ctx, tx, offer.WholesalerID, offer.ID)
 		if err != nil {
 			return err
 		}
@@ -199,7 +199,7 @@ func (s *Service) ReserveForOrder(ctx context.Context, input ReserveInput) error
 		refID := input.OrderID
 		if _, err := s.AddMovement(ctx, tx, MovementInput{
 			WholesalerID: offer.WholesalerID,
-			MedicineID:   offer.MedicineID,
+			OfferID:      offer.ID,
 			Type:         model.InventoryMovementTypeReserved,
 			Qty:          input.Qty,
 			RefType:      &refType,
@@ -220,7 +220,6 @@ func (s *Service) ReserveForOrder(ctx context.Context, input ReserveInput) error
 			Payload: map[string]interface{}{
 				"offer_id":      offer.ID,
 				"wholesaler_id": offer.WholesalerID,
-				"medicine_id":   offer.MedicineID,
 				"available_qty": newAvailable,
 				"reason":        "order.reserved",
 				"order_id":      input.OrderID,

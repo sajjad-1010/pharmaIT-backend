@@ -46,106 +46,7 @@ curl http://localhost/api/v1/auth/me \
   -H "Authorization: Bearer <ACCESS_TOKEN>"
 ```
 
-## 2) Catalog + Search
-```bash
-curl "http://localhost/api/v1/medicines?query=para&limit=20&cursor="
-```
-
-### Validate Medicine Import Row (Wholesaler)
-```bash
-curl -X POST http://localhost/api/v1/medicines/validate \
-  -H "Authorization: Bearer <WHOLESALER_ACCESS_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "generic_name":"Paracetamol",
-    "brand_name":"Panadole",
-    "form":"Tablet",
-    "strength":"500 mg",
-    "pack_size":"20 tabs",
-    "atc_code":"N02BE01"
-  }'
-```
-
-Possible `status` values in response:
-- `MATCHED`
-- `AMBIGUOUS`
-- `SUGGESTED_MATCH`
-- `NEW_MEDICINE`
-- `PENDING_REVIEW`
-
-Important backend rule:
-- if exact catalog match exists, response must immediately be:
-  - `status = MATCHED`
-  - `matched_medicine != null`
-  - `warnings = []`
-  - `suggested_medicine = null`
-  - `candidates = []`
-  - `pending_candidate = null`
-
-Possible warning objects in `warnings[]`:
-- `field = "brand_name"`
-- `code = "BRAND_NAME_RECOMMENDED"`
-- meaning: backend recommends filling `brand_name` because matching and duplicate detection become more accurate
-
-### Submit New Medicine Candidate (Wholesaler)
-Use this only when validation returns `NEW_MEDICINE`, or when the wholesaler explicitly overrides suggestions by setting `force_submit=true`.
-
-```bash
-curl -X POST http://localhost/api/v1/medicine-candidates \
-  -H "Authorization: Bearer <WHOLESALER_ACCESS_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "generic_name":"Ceftriaxone",
-    "brand_name":"Ceftron",
-    "form":"Injection",
-    "strength":"1 g",
-    "pack_size":"10 vials",
-    "atc_code":"J01DD04",
-    "force_submit":true
-  }'
-```
-
-### List Pending Medicine Candidates (Admin)
-```bash
-curl "http://localhost/api/v1/admin/medicine-candidates?status=PENDING&limit=50" \
-  -H "Authorization: Bearer <ADMIN_ACCESS_TOKEN>"
-```
-
-### Approve Candidate by Linking to Existing Medicine (Admin)
-```bash
-curl -X POST http://localhost/api/v1/admin/medicine-candidates/<CANDIDATE_ID>/approve \
-  -H "Authorization: Bearer <ADMIN_ACCESS_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "medicine_id":"<MEDICINE_ID>",
-    "decision_note":"Matched to existing catalog medicine"
-  }'
-```
-
-### Approve Candidate by Creating New Medicine (Admin)
-```bash
-curl -X POST http://localhost/api/v1/admin/medicine-candidates/<CANDIDATE_ID>/approve \
-  -H "Authorization: Bearer <ADMIN_ACCESS_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "brand_name":"Ceftron",
-    "form":"Injection",
-    "strength":"1 g",
-    "decision_note":"Approved as new medicine"
-  }'
-```
-
-### Reject Candidate (Admin)
-```bash
-curl -X POST http://localhost/api/v1/admin/medicine-candidates/<CANDIDATE_ID>/reject \
-  -H "Authorization: Bearer <ADMIN_ACCESS_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "decision_note":"Spelling issue, use existing medicine instead"
-  }'
-```
-
-## 3) Offers
+## 2) Offers + Search
 
 ### Create Offer (Wholesaler)
 ```bash
@@ -153,9 +54,9 @@ curl -X POST http://localhost/api/v1/offers \
   -H "Authorization: Bearer <WHOLESALER_ACCESS_TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{
-    "medicine_id":"<MEDICINE_ID>",
+    "name":"L-тироксин 50 Б/Хеми тб 50мкг №50",
     "display_price":"10.5000",
-    "currency":"TJS",
+    "producer":"Берлин Хеми",
     "expiry_date":"2027-09-15",
     "is_active":true
   }'
@@ -164,16 +65,44 @@ curl -X POST http://localhost/api/v1/offers \
 Offer contract note:
 - `available_qty` is not accepted by the public offer API anymore.
 - Stock changes must go through `POST /api/v1/inventory/movements`.
-- Existing offers should be backfilled from ledger once after deployment so stale stock values do not remain visible.
-- `min_order_qty` is fixed internally to `1` and is not part of the public offer API.
 - `delivery_eta_hours` was removed from regular offers. Keep ETA only in rare bid submissions.
+- Search is performed by `name`.
+
+### Batch Create Offers (Wholesaler)
+```bash
+curl -X POST http://localhost/api/v1/offers/batch \
+  -H "Authorization: Bearer <WHOLESALER_ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "items":[
+      {
+        "name":"03 Гель бальзам для тела \"Глюк,Хонд,Саб\" 75мл туба",
+        "display_price":"11.5000",
+        "producer":"Мирролла",
+        "expiry_date":"2028-09-01",
+        "is_active":true
+      },
+      {
+        "name":"L-тироксин 50 Б/Хеми тб 50мкг №50",
+        "display_price":"12.8000",
+        "producer":"Берлин Хеми"
+      }
+    ]
+  }'
+```
+
+Batch response note:
+- valid rows are inserted
+- invalid rows are returned in `errors[]`
+- `errors[].index` is zero-based and maps to the original row position in the batch payload
+- max batch size is `10000`
 
 ### List Offers (Cursor)
 ```bash
-curl "http://localhost/api/v1/offers?medicine_id=<MEDICINE_ID>&limit=20&cursor=<CURSOR>"
+curl "http://localhost/api/v1/offers?query=тироксин&limit=20&cursor=<CURSOR>"
 ```
 
-## 4) Inventory
+## 3) Inventory
 
 ### Add Movement
 ```bash
@@ -181,7 +110,7 @@ curl -X POST http://localhost/api/v1/inventory/movements \
   -H "Authorization: Bearer <WHOLESALER_ACCESS_TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{
-    "medicine_id":"<MEDICINE_ID>",
+    "offer_id":"<OFFER_ID>",
     "type":"IN",
     "qty":500,
     "ref_type":"manual_adjust"
@@ -190,11 +119,11 @@ curl -X POST http://localhost/api/v1/inventory/movements \
 
 ### Get Stock
 ```bash
-curl "http://localhost/api/v1/inventory/stock?medicine_id=<MEDICINE_ID>" \
+curl "http://localhost/api/v1/inventory/stock?offer_id=<OFFER_ID>" \
   -H "Authorization: Bearer <WHOLESALER_ACCESS_TOKEN>"
 ```
 
-## 5) Orders
+## 4) Orders
 
 ### Create Order (Pharmacy)
 ```bash
@@ -203,7 +132,6 @@ curl -X POST http://localhost/api/v1/orders \
   -H "Content-Type: application/json" \
   -d '{
     "wholesaler_id":"<WHOLESALER_ID>",
-    "currency":"TJS",
     "items":[{"offer_id":"<OFFER_ID>","qty":10}]
   }'
 ```
@@ -223,11 +151,9 @@ Order response note:
   - `PharmacyEmail`
   - `PharmacyPhone`
 - order objects in list responses now also include `Items[]` with:
-  - `MedicineID`
-  - `GenericName`
-  - `BrandName`
-  - `Form`
-  - `Strength`
+  - `OfferID`
+  - `ItemName`
+  - `Producer`
   - `Qty`
   - `UnitPrice`
   - `LineTotal`
@@ -262,7 +188,6 @@ curl -X POST http://localhost/api/v1/rare-requests/<RARE_REQUEST_ID>/bids \
   -H "Content-Type: application/json" \
   -d '{
     "price":"12.0000",
-    "currency":"TJS",
     "available_qty":20,
     "delivery_eta_hours":18
   }'
@@ -295,7 +220,6 @@ curl -X POST http://localhost/api/v1/manufacturer-requests/<REQUEST_ID>/quotes \
   -H "Content-Type: application/json" \
   -d '{
     "unit_price_final":"7.9000",
-    "currency":"TJS",
     "lead_time_days":12
   }'
 ```
@@ -335,11 +259,80 @@ Expected events:
 - `inventory.changed`
 - `order.status_changed`
 
-## 10) Flutter Testing Checklist
+## 10) Notifications
+
+### Register Device Token
+```bash
+curl -X POST http://localhost/api/v1/notifications/devices \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "platform":"ANDROID",
+    "token":"demo-device-token-001",
+    "device_label":"Pixel 8"
+  }'
+```
+
+### List Registered Devices
+```bash
+curl http://localhost/api/v1/notifications/devices \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+### Get Notification Preferences
+```bash
+curl http://localhost/api/v1/notifications/preferences \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+### Update Notification Preferences
+```bash
+curl -X PUT http://localhost/api/v1/notifications/preferences \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "push_enabled": true,
+    "order_created": true,
+    "order_status_changed": true
+  }'
+```
+
+### List Notifications
+```bash
+curl "http://localhost/api/v1/notifications?limit=20&cursor=&unread_only=false" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+### Mark Notification Read
+```bash
+curl -X POST http://localhost/api/v1/notifications/<NOTIFICATION_ID>/read \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+### Mark All Read
+```bash
+curl -X POST http://localhost/api/v1/notifications/read-all \
+  -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+Notification foundation note:
+- backend now stores notification inbox rows in PostgreSQL
+- device tokens/subscriptions are stored in `notification_devices`
+- push delivery logging is stored in `notification_deliveries`
+- backend supports `noop` and `fcm` push providers
+- for real Android/Web push, set:
+  - `NOTIFICATION_PUSH_PROVIDER=fcm`
+  - `FCM_CREDENTIALS_FILE=/path/to/firebase-service-account.json`
+  - or `FCM_CREDENTIALS_JSON=<raw json>`
+- invalid FCM tokens are automatically deactivated after provider failure detection
+
+## 11) Flutter Testing Checklist
 1. Login and store access/refresh tokens securely.
 2. Call `/auth/me` and route UI by role.
 3. Test cursor pagination on `/medicines`, `/offers`, `/orders`.
 4. Open SSE stream and verify live updates on offer/stock/order-status changes.
 5. Create order and check stock reduction.
-6. Run payment flow and confirm access extension.
-7. Verify standard backend error format handling in UI.
+6. Register device token and verify notifications list updates after events.
+7. Run payment flow and confirm access extension.
+8. Verify standard backend error format handling in UI.
+

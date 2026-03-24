@@ -24,10 +24,10 @@ func NewService(db *gorm.DB, outboxSvc *outbox.Service) *Service {
 }
 
 type CreateCampaignInput struct {
-	WholesalerID uuid.UUID                   `json:"wholesaler_id"`
-	Title        string                      `json:"title"`
-	StartsAt     *time.Time                  `json:"starts_at"`
-	EndsAt       *time.Time                  `json:"ends_at"`
+	WholesalerID uuid.UUID                    `json:"wholesaler_id"`
+	Title        string                       `json:"title"`
+	StartsAt     *time.Time                   `json:"starts_at"`
+	EndsAt       *time.Time                   `json:"ends_at"`
 	Status       model.DiscountCampaignStatus `json:"status"`
 }
 
@@ -57,7 +57,7 @@ func (s *Service) CreateCampaign(ctx context.Context, input CreateCampaignInput)
 
 type CreateItemInput struct {
 	CampaignID    uuid.UUID          `json:"campaign_id"`
-	MedicineID    uuid.UUID          `json:"medicine_id"`
+	OfferID       uuid.UUID          `json:"offer_id"`
 	DiscountType  model.DiscountType `json:"discount_type"`
 	DiscountValue string             `json:"discount_value"`
 }
@@ -87,7 +87,7 @@ func (s *Service) AddItem(ctx context.Context, wholesalerID uuid.UUID, input Cre
 	row := &model.DiscountItem{
 		ID:            uuid.New(),
 		CampaignID:    input.CampaignID,
-		MedicineID:    input.MedicineID,
+		OfferID:       input.OfferID,
 		DiscountType:  input.DiscountType,
 		DiscountValue: value,
 	}
@@ -99,10 +99,10 @@ func (s *Service) AddItem(ctx context.Context, wholesalerID uuid.UUID, input Cre
 		out, err := s.outbox.Write(ctx, tx, outbox.Event{
 			Type: "offer.updated",
 			Payload: map[string]interface{}{
-				"campaign_id":     row.CampaignID,
-				"medicine_id":     row.MedicineID,
-				"discount_type":   row.DiscountType,
-				"discount_value":  row.DiscountValue.StringFixed(4),
+				"campaign_id":    row.CampaignID,
+				"offer_id":       row.OfferID,
+				"discount_type":  row.DiscountType,
+				"discount_value": row.DiscountValue.StringFixed(4),
 			},
 		})
 		if err != nil {
@@ -126,4 +126,3 @@ func (s *Service) ListCampaigns(ctx context.Context, wholesalerID uuid.UUID) ([]
 	}
 	return rows, nil
 }
-

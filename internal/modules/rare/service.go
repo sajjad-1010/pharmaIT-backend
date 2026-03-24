@@ -17,8 +17,8 @@ import (
 )
 
 type Service struct {
-	db       *gorm.DB
-	outbox   *outbox.Service
+	db     *gorm.DB
+	outbox *outbox.Service
 }
 
 func NewService(db *gorm.DB, outboxSvc *outbox.Service) *Service {
@@ -26,20 +26,19 @@ func NewService(db *gorm.DB, outboxSvc *outbox.Service) *Service {
 }
 
 type CreateRequestInput struct {
-	PharmacyID         uuid.UUID   `json:"pharmacy_id"`
-	MedicineID         *uuid.UUID  `json:"medicine_id"`
-	RequestedNameText  *string     `json:"requested_name_text"`
-	Qty                int         `json:"qty"`
-	DeadlineAt         time.Time   `json:"deadline_at"`
-	Notes              *string     `json:"notes"`
+	PharmacyID        uuid.UUID `json:"pharmacy_id"`
+	RequestedNameText *string   `json:"requested_name_text"`
+	Qty               int       `json:"qty"`
+	DeadlineAt        time.Time `json:"deadline_at"`
+	Notes             *string   `json:"notes"`
 }
 
 func (s *Service) CreateRequest(ctx context.Context, input CreateRequestInput) (*model.RareRequest, error) {
 	if input.Qty <= 0 {
 		return nil, appErr.BadRequest("INVALID_QTY", "qty must be > 0", nil)
 	}
-	if input.MedicineID == nil && strings.TrimSpace(ptrValue(input.RequestedNameText)) == "" {
-		return nil, appErr.BadRequest("MISSING_TARGET", "medicine_id or requested_name_text must be provided", nil)
+	if strings.TrimSpace(ptrValue(input.RequestedNameText)) == "" {
+		return nil, appErr.BadRequest("MISSING_TARGET", "requested_name_text must be provided", nil)
 	}
 	if time.Now().After(input.DeadlineAt) {
 		return nil, appErr.BadRequest("INVALID_DEADLINE", "deadline_at must be in the future", nil)
@@ -48,7 +47,6 @@ func (s *Service) CreateRequest(ctx context.Context, input CreateRequestInput) (
 	row := &model.RareRequest{
 		ID:                uuid.New(),
 		PharmacyID:        input.PharmacyID,
-		MedicineID:        input.MedicineID,
 		RequestedNameText: trimPtr(input.RequestedNameText),
 		Qty:               input.Qty,
 		DeadlineAt:        input.DeadlineAt,
@@ -65,7 +63,6 @@ func (s *Service) CreateRequest(ctx context.Context, input CreateRequestInput) (
 			Payload: map[string]interface{}{
 				"rare_request_id": row.ID,
 				"pharmacy_id":     row.PharmacyID,
-				"medicine_id":     row.MedicineID,
 				"requested_name":  row.RequestedNameText,
 				"qty":             row.Qty,
 				"deadline_at":     row.DeadlineAt,
@@ -109,13 +106,13 @@ func (s *Service) ListRequests(ctx context.Context, input ListRequestsInput) (pa
 }
 
 type CreateBidInput struct {
-	RareRequestID     uuid.UUID `json:"rare_request_id"`
-	WholesalerID      uuid.UUID `json:"wholesaler_id"`
-	Price             string    `json:"price"`
-	Currency          string    `json:"currency"`
-	AvailableQty      int       `json:"available_qty"`
-	DeliveryETAHours  *int      `json:"delivery_eta_hours"`
-	Notes             *string   `json:"notes"`
+	RareRequestID    uuid.UUID `json:"rare_request_id"`
+	WholesalerID     uuid.UUID `json:"wholesaler_id"`
+	Price            string    `json:"price"`
+	Currency         string    `json:"currency"`
+	AvailableQty     int       `json:"available_qty"`
+	DeliveryETAHours *int      `json:"delivery_eta_hours"`
+	Notes            *string   `json:"notes"`
 }
 
 func (s *Service) CreateBid(ctx context.Context, input CreateBidInput) (*model.RareBid, error) {
@@ -225,12 +222,12 @@ func (s *Service) SelectBid(ctx context.Context, bidID uuid.UUID, pharmacyID uui
 		out, err := s.outbox.Write(ctx, tx, outbox.Event{
 			Type: "rare.bid_selected",
 			Payload: map[string]interface{}{
-				"rare_bid_id":      bid.ID,
-				"rare_request_id":  req.ID,
-				"selected_by":      pharmacyID,
-				"wholesaler_id":    bid.WholesalerID,
-				"price":            bid.Price.StringFixed(4),
-				"currency":         bid.Currency,
+				"rare_bid_id":     bid.ID,
+				"rare_request_id": req.ID,
+				"selected_by":     pharmacyID,
+				"wholesaler_id":   bid.WholesalerID,
+				"price":           bid.Price.StringFixed(4),
+				"currency":        bid.Currency,
 			},
 		})
 		if err != nil {

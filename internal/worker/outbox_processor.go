@@ -9,6 +9,7 @@ import (
 
 	"pharmalink/server/internal/asynqjobs"
 	"pharmalink/server/internal/db/model"
+	"pharmalink/server/internal/modules/notifications"
 	"pharmalink/server/internal/modules/outbox"
 	"pharmalink/server/internal/modules/sse"
 
@@ -22,6 +23,7 @@ type OutboxProcessor struct {
 	redis      *redis.Client
 	broker     *sse.Broker
 	enqueuer   *asynqjobs.Enqueuer
+	notifSvc   *notifications.Service
 	log        zerolog.Logger
 	sseChannel string
 }
@@ -31,6 +33,7 @@ func NewOutboxProcessor(
 	redisClient *redis.Client,
 	broker *sse.Broker,
 	enqueuer *asynqjobs.Enqueuer,
+	notifSvc *notifications.Service,
 	log zerolog.Logger,
 ) *OutboxProcessor {
 	return &OutboxProcessor{
@@ -38,6 +41,7 @@ func NewOutboxProcessor(
 		redis:      redisClient,
 		broker:     broker,
 		enqueuer:   enqueuer,
+		notifSvc:   notifSvc,
 		log:        log,
 		sseChannel: "sse_offers",
 	}
@@ -93,7 +97,6 @@ func (p *OutboxProcessor) handleEvent(ctx context.Context, eventType string, pay
 	switch eventType {
 	case "offer.updated":
 		p.invalidateByPrefix(ctx, "offers:")
-		p.invalidateByPrefix(ctx, "medicines:")
 		p.publishRealtime(ctx, "offer.updated", payload)
 	case "inventory.changed":
 		p.invalidateByPrefix(ctx, "offers:")
@@ -109,6 +112,11 @@ func (p *OutboxProcessor) handleEvent(ctx context.Context, eventType string, pay
 		p.invalidateByPrefix(ctx, "manufacturer:")
 	default:
 		p.log.Info().Str("event_type", eventType).Msg("outbox event has no explicit handler")
+	}
+	if p.notifSvc != nil {
+		if err := p.notifSvc.HandleEvent(ctx, eventType, payload); err != nil {
+			return err
+		}
 	}
 	return nil
 }

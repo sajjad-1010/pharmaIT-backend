@@ -56,11 +56,10 @@ func (h *Handler) createRequest(c *fiber.Ctx) error {
 	}
 
 	var req struct {
-		ManufacturerID    uuid.UUID  `json:"manufacturer_id"`
-		MedicineID        *uuid.UUID `json:"medicine_id"`
-		RequestedNameText *string    `json:"requested_name_text"`
-		Qty               int        `json:"qty"`
-		NeededBy          *string    `json:"needed_by"`
+		ManufacturerID    uuid.UUID `json:"manufacturer_id"`
+		RequestedNameText *string   `json:"requested_name_text"`
+		Qty               int       `json:"qty"`
+		NeededBy          *string   `json:"needed_by"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return response.Fail(c, appErr.BadRequest("INVALID_BODY", "invalid request body", nil))
@@ -78,7 +77,6 @@ func (h *Handler) createRequest(c *fiber.Ctx) error {
 	out, err := h.svc.CreateRequest(c.UserContext(), CreateRequestInput{
 		WholesalerID:      wholesalerID,
 		ManufacturerID:    req.ManufacturerID,
-		MedicineID:        req.MedicineID,
 		RequestedNameText: req.RequestedNameText,
 		Qty:               req.Qty,
 		NeededBy:          neededBy,
@@ -219,4 +217,3 @@ func (h *Handler) createQuote(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusCreated, out)
 }
-

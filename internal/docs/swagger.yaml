@@ -1,229 +1,63 @@
 basePath: /api/v1
 definitions:
-  catalog.ApproveMedicineCandidateRequest:
+  model.NotificationDevice:
     properties:
-      atc_code:
+      createdAt:
         type: string
-      brand_name:
+      deviceLabel:
         type: string
-      decision_note:
+      id:
         type: string
-      form:
-        type: string
-      generic_name:
-        type: string
-      is_active:
+      isActive:
         type: boolean
-      medicine_id:
+      lastSeenAt:
         type: string
-      pack_size:
+      platform:
+        $ref: '#/definitions/model.NotificationDevicePlatform'
+      token:
         type: string
-      strength:
+      updatedAt:
         type: string
-    type: object
-  catalog.ApproveMedicineCandidateResponse:
-    properties:
-      candidate:
-        $ref: '#/definitions/catalog.MedicineCandidateResponse'
-      medicine:
-        $ref: '#/definitions/catalog.MedicineSummary'
-    type: object
-  catalog.CreateMedicineCandidateRequest:
-    properties:
-      atc_code:
-        type: string
-      brand_name:
-        type: string
-      force_submit:
-        type: boolean
-      form:
-        type: string
-      generic_name:
-        type: string
-      pack_size:
-        type: string
-      strength:
+      userID:
         type: string
     type: object
-  catalog.ImportValidationResponse:
-    properties:
-      candidates:
-        items:
-          $ref: '#/definitions/catalog.MedicineSuggestion'
-        type: array
-      matched_medicine:
-        $ref: '#/definitions/catalog.MedicineSummary'
-      normalized:
-        $ref: '#/definitions/catalog.NormalizedMedicineInput'
-      pending_candidate:
-        $ref: '#/definitions/catalog.PendingCandidateSummary'
-      status:
-        $ref: '#/definitions/catalog.MatchStatus'
-      suggested_medicine:
-        $ref: '#/definitions/catalog.MedicineSuggestion'
-      warnings:
-        items:
-          $ref: '#/definitions/catalog.ValidationWarning'
-        type: array
-    type: object
-  catalog.ListMedicineCandidatesResponse:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/catalog.MedicineCandidateResponse'
-        type: array
-    type: object
-  catalog.MatchStatus:
+  model.NotificationDevicePlatform:
     enum:
-    - MATCHED
-    - AMBIGUOUS
-    - SUGGESTED_MATCH
-    - NEW_MEDICINE
-    - PENDING_REVIEW
+    - ANDROID
+    - WEB
     type: string
     x-enum-varnames:
-    - MatchStatusMatched
-    - MatchStatusAmbiguous
-    - MatchStatusSuggestedMatch
-    - MatchStatusNewMedicine
-    - MatchStatusPendingReview
-  catalog.MedicineCandidateResponse:
+    - NotificationDevicePlatformAndroid
+    - NotificationDevicePlatformWeb
+  model.NotificationPreference:
     properties:
-      admin_decision_note:
-        type: string
-      atc_code:
-        type: string
-      brand_name:
-        type: string
-      created_at:
-        type: string
-      form:
-        type: string
-      generic_name:
-        type: string
-      id:
-        type: string
-      matched_medicine_id:
-        type: string
-      pack_size:
-        type: string
-      reviewed_at:
-        type: string
-      reviewed_by:
-        type: string
-      status:
-        $ref: '#/definitions/model.MedicineCandidateStatus'
-      strength:
-        type: string
-      updated_at:
-        type: string
-      wholesaler_id:
-        type: string
-    type: object
-  catalog.MedicineImportPayload:
-    properties:
-      atc_code:
-        type: string
-      brand_name:
-        type: string
-      form:
-        type: string
-      generic_name:
-        type: string
-      pack_size:
-        type: string
-      strength:
-        type: string
-    type: object
-  catalog.MedicineSuggestion:
-    properties:
-      medicine:
-        $ref: '#/definitions/catalog.MedicineSummary'
-      score:
-        type: number
-    type: object
-  catalog.MedicineSummary:
-    properties:
-      atc_code:
-        type: string
-      brand_name:
-        type: string
-      form:
-        type: string
-      generic_name:
-        type: string
-      id:
-        type: string
-      is_active:
+      accessUpdated:
         type: boolean
-      pack_size:
+      createdAt:
         type: string
-      strength:
-        type: string
-    type: object
-  catalog.NormalizedMedicineInput:
-    properties:
-      brand_name:
-        type: string
-      form:
-        type: string
-      generic_name:
-        type: string
-      strength:
-        type: string
-    type: object
-  catalog.PendingCandidateSummary:
-    properties:
-      created_at:
-        type: string
-      id:
-        type: string
-      status:
-        $ref: '#/definitions/model.MedicineCandidateStatus'
-    type: object
-  catalog.RejectMedicineCandidateRequest:
-    properties:
-      decision_note:
-        type: string
-    type: object
-  catalog.UpsertMedicineInput:
-    properties:
-      atc_code:
-        type: string
-      brand_name:
-        type: string
-      form:
-        type: string
-      generic_name:
-        type: string
-      id:
-        type: string
-      is_active:
+      inAppEnabled:
         type: boolean
-      pack_size:
+      manufacturerQuoteCreated:
+        type: boolean
+      manufacturerRequestCreated:
+        type: boolean
+      orderCreated:
+        type: boolean
+      orderStatusChanged:
+        type: boolean
+      paymentUpdated:
+        type: boolean
+      pushEnabled:
+        type: boolean
+      rareBidReceived:
+        type: boolean
+      rareBidSelected:
+        type: boolean
+      updatedAt:
         type: string
-      strength:
+      userID:
         type: string
     type: object
-  catalog.ValidationWarning:
-    properties:
-      code:
-        type: string
-      field:
-        type: string
-      message:
-        type: string
-    type: object
-  model.MedicineCandidateStatus:
-    enum:
-    - PENDING
-    - APPROVED
-    - REJECTED
-    type: string
-    x-enum-varnames:
-    - MedicineCandidateStatusPending
-    - MedicineCandidateStatusApproved
-    - MedicineCandidateStatusRejected
   model.OrderStatus:
     enum:
     - CREATED
@@ -252,37 +86,120 @@ definitions:
     - UserRoleWholesaler
     - UserRoleManufacturer
     - UserRoleAdmin
+  model.WholesalerOffer:
+    properties:
+      availableQty:
+        type: integer
+      createdAt:
+        type: string
+      displayPrice:
+        type: number
+      expiryDate:
+        type: string
+      id:
+        type: string
+      isActive:
+        type: boolean
+      name:
+        type: string
+      producer:
+        type: string
+      updatedAt:
+        type: string
+      wholesalerID:
+        type: string
+    type: object
+  notifications.DeviceUpsertInput:
+    properties:
+      device_label:
+        type: string
+      platform:
+        $ref: '#/definitions/model.NotificationDevicePlatform'
+      token:
+        type: string
+    type: object
+  notifications.PreferencePatch:
+    properties:
+      access_updated:
+        type: boolean
+      in_app_enabled:
+        type: boolean
+      manufacturer_quote_created:
+        type: boolean
+      manufacturer_request_created:
+        type: boolean
+      order_created:
+        type: boolean
+      order_status_changed:
+        type: boolean
+      payment_updated:
+        type: boolean
+      push_enabled:
+        type: boolean
+      rare_bid_received:
+        type: boolean
+      rare_bid_selected:
+        type: boolean
+    type: object
+  offers.BatchCreateInput:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/offers.UpsertOfferInput'
+        type: array
+    type: object
+  offers.BatchCreateResult:
+    properties:
+      created_count:
+        type: integer
+      errors:
+        items:
+          $ref: '#/definitions/offers.BatchError'
+        type: array
+      failed_count:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/model.WholesalerOffer'
+        type: array
+    type: object
+  offers.BatchError:
+    properties:
+      code:
+        type: string
+      details: {}
+      index:
+        type: integer
+      message:
+        type: string
+    type: object
   offers.UpsertOfferInput:
     properties:
-      currency:
-        type: string
       display_price:
         type: string
       expiry_date:
         type: string
       is_active:
         type: boolean
-      medicine_id:
+      name:
+        type: string
+      producer:
         type: string
     type: object
   orders.OrderItemSummary:
     properties:
-      BrandName:
-        type: string
-      Form:
-        type: string
-      GenericName:
-        type: string
       ID:
+        type: string
+      ItemName:
         type: string
       LineTotal:
         type: number
-      MedicineID:
+      OfferID:
+        type: string
+      Producer:
         type: string
       Qty:
         type: integer
-      Strength:
-        type: string
       UnitPrice:
         type: number
     type: object
@@ -382,190 +299,6 @@ info:
   title: PharmaLink API
   version: "1.0"
 paths:
-  /admin/medicine-candidates/:
-    get:
-      parameters:
-      - description: candidate status
-        in: query
-        name: status
-        type: string
-      - description: limit
-        in: query
-        name: limit
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/catalog.ListMedicineCandidatesResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: List medicine candidates waiting for review (Admin)
-      tags:
-      - admin
-  /admin/medicine-candidates/{id}/approve:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: medicine candidate id
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: approve payload
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/catalog.ApproveMedicineCandidateRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/catalog.ApproveMedicineCandidateResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Approve medicine candidate (Admin)
-      tags:
-      - admin
-  /admin/medicine-candidates/{id}/reject:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: medicine candidate id
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: reject payload
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/catalog.RejectMedicineCandidateRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/catalog.MedicineCandidateResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Reject medicine candidate (Admin)
-      tags:
-      - admin
-  /admin/medicines/:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: medicine payload
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/catalog.UpsertMedicineInput'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Create medicine (Admin)
-      tags:
-      - catalog
-  /admin/medicines/{id}:
-    patch:
-      consumes:
-      - application/json
-      parameters:
-      - description: medicine id
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: medicine payload
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/catalog.UpsertMedicineInput'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Update medicine (Admin)
-      tags:
-      - catalog
   /admin/users:
     get:
       parameters:
@@ -763,93 +496,6 @@ paths:
       summary: Register new user
       tags:
       - auth
-  /discount-campaigns/:
-    get:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: List discount campaigns (Wholesaler)
-      tags:
-      - discounts
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: campaign payload
-        in: body
-        name: request
-        required: true
-        schema:
-          type: object
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Create discount campaign (Wholesaler)
-      tags:
-      - discounts
-  /discount-campaigns/{id}/items:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: campaign id
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: discount item payload
-        in: body
-        name: request
-        required: true
-        schema:
-          type: object
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Add item to discount campaign (Wholesaler)
-      tags:
-      - discounts
   /inventory/movements:
     post:
       consumes:
@@ -885,9 +531,9 @@ paths:
   /inventory/stock:
     get:
       parameters:
-      - description: medicine id
+      - description: offer id
         in: query
-        name: medicine_id
+        name: offer_id
         required: true
         type: string
       produces:
@@ -908,16 +554,12 @@ paths:
             $ref: '#/definitions/response.ErrorEnvelope'
       security:
       - BearerAuth: []
-      summary: Get current stock by medicine (Wholesaler)
+      summary: Get current stock by offer (Wholesaler)
       tags:
       - inventory
-  /manufacturer-requests:
+  /notifications/:
     get:
       parameters:
-      - description: status
-        in: query
-        name: status
-        type: string
       - description: limit
         in: query
         name: limit
@@ -926,6 +568,10 @@ paths:
         in: query
         name: cursor
         type: string
+      - description: unread only
+        in: query
+        name: unread_only
+        type: boolean
       produces:
       - application/json
       responses:
@@ -942,73 +588,27 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/response.ErrorEnvelope'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
       security:
       - BearerAuth: []
-      summary: List manufacturer requests
+      summary: List notifications
       tags:
-      - manufacturer
+      - notifications
+  /notifications/{id}/read:
     post:
-      consumes:
-      - application/json
       parameters:
-      - description: manufacturer request payload
-        in: body
-        name: request
-        required: true
-        schema:
-          type: object
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Create manufacturer request (Wholesaler)
-      tags:
-      - manufacturer
-  /manufacturer-requests/{id}/quotes:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: manufacturer request id
+      - description: notification id
         in: path
         name: id
         required: true
         type: string
-      - description: quote payload
-        in: body
-        name: request
-        required: true
-        schema:
-          type: object
       produces:
       - application/json
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           schema:
-            additionalProperties: true
+            additionalProperties:
+              type: boolean
             type: object
         "400":
           description: Bad Request
@@ -1018,98 +618,52 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/response.ErrorEnvelope'
-        "403":
-          description: Forbidden
+        "404":
+          description: Not Found
           schema:
             $ref: '#/definitions/response.ErrorEnvelope'
       security:
       - BearerAuth: []
-      summary: Create manufacturer quote (Manufacturer)
+      summary: Mark notification as read
       tags:
-      - manufacturer
-  /medicine-candidates/:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: medicine candidate payload
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/catalog.CreateMedicineCandidateRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/catalog.MedicineCandidateResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Submit new medicine candidate for admin review (Wholesaler)
-      tags:
-      - catalog
-  /medicines:
+      - notifications
+  /notifications/devices:
     get:
-      parameters:
-      - description: search query
-        in: query
-        name: query
-        type: string
-      - description: limit
-        in: query
-        name: limit
-        type: integer
-      - description: cursor
-        in: query
-        name: cursor
-        type: string
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
+            items:
+              $ref: '#/definitions/model.NotificationDevice'
+            type: array
+        "401":
+          description: Unauthorized
           schema:
             $ref: '#/definitions/response.ErrorEnvelope'
-      summary: List/search medicines
+      security:
+      - BearerAuth: []
+      summary: List notification devices
       tags:
-      - catalog
-  /medicines/validate:
+      - notifications
     post:
       consumes:
       - application/json
       parameters:
-      - description: medicine import payload
+      - description: device payload
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/catalog.MedicineImportPayload'
+          $ref: '#/definitions/notifications.DeviceUpsertInput'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/catalog.ImportValidationResponse'
+            $ref: '#/definitions/model.NotificationDevice'
         "400":
           description: Bad Request
           schema:
@@ -1120,15 +674,117 @@ paths:
             $ref: '#/definitions/response.ErrorEnvelope'
       security:
       - BearerAuth: []
-      summary: Validate medicine import row (Wholesaler)
+      summary: Register or refresh notification device
       tags:
-      - catalog
+      - notifications
+  /notifications/devices/{id}:
+    delete:
+      parameters:
+      - description: device id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Deactivate notification device
+      tags:
+      - notifications
+  /notifications/preferences:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.NotificationPreference'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Get notification preferences
+      tags:
+      - notifications
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: preferences payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/notifications.PreferencePatch'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.NotificationPreference'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Update notification preferences
+      tags:
+      - notifications
+  /notifications/read-all:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Mark all notifications as read
+      tags:
+      - notifications
   /offers:
     get:
       parameters:
-      - description: medicine id
+      - description: offer name query
         in: query
-        name: medicine_id
+        name: query
         type: string
       - description: limit
         in: query
@@ -1220,6 +876,37 @@ paths:
       security:
       - BearerAuth: []
       summary: Update offer (Wholesaler)
+      tags:
+      - offers
+  /offers/batch:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: batch offer payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/offers.BatchCreateInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/offers.BatchCreateResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Create offers in batch (Wholesaler)
       tags:
       - offers
   /orders/:
@@ -1434,151 +1121,6 @@ paths:
       summary: Payment webhook callback
       tags:
       - payments
-  /rare-requests:
-    get:
-      parameters:
-      - description: status
-        in: query
-        name: status
-        type: string
-      - description: limit
-        in: query
-        name: limit
-        type: integer
-      - description: cursor
-        in: query
-        name: cursor
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: List rare requests
-      tags:
-      - rare
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: rare request payload
-        in: body
-        name: request
-        required: true
-        schema:
-          type: object
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Create rare request (Pharmacy)
-      tags:
-      - rare
-  /rare-requests/{id}/bids:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: rare request id
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: rare bid payload
-        in: body
-        name: request
-        required: true
-        schema:
-          type: object
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Create rare bid (Wholesaler)
-      tags:
-      - rare
-  /rare-requests/bids/{id}/select:
-    post:
-      parameters:
-      - description: rare bid id
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Select rare bid (Pharmacy)
-      tags:
-      - rare
   /stream/offers:
     get:
       produces:

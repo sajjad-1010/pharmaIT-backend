@@ -12,297 +12,6 @@
     },
     "basePath": "/api/v1",
     "paths": {
-        "/admin/medicine-candidates/": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "admin"
-                ],
-                "summary": "List medicine candidates waiting for review (Admin)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "candidate status",
-                        "name": "status",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "limit",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/catalog.ListMedicineCandidatesResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/medicine-candidates/{id}/approve": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "admin"
-                ],
-                "summary": "Approve medicine candidate (Admin)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "medicine candidate id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "approve payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/catalog.ApproveMedicineCandidateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/catalog.ApproveMedicineCandidateResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/medicine-candidates/{id}/reject": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "admin"
-                ],
-                "summary": "Reject medicine candidate (Admin)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "medicine candidate id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "reject payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/catalog.RejectMedicineCandidateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/catalog.MedicineCandidateResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/medicines/": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "catalog"
-                ],
-                "summary": "Create medicine (Admin)",
-                "parameters": [
-                    {
-                        "description": "medicine payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/catalog.UpsertMedicineInput"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/medicines/{id}": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "catalog"
-                ],
-                "summary": "Update medicine (Admin)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "medicine id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "medicine payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/catalog.UpsertMedicineInput"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    }
-                }
-            }
-        },
         "/admin/users": {
             "get": {
                 "security": [
@@ -609,144 +318,6 @@
                 }
             }
         },
-        "/discount-campaigns/": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "discounts"
-                ],
-                "summary": "List discount campaigns (Wholesaler)",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "discounts"
-                ],
-                "summary": "Create discount campaign (Wholesaler)",
-                "parameters": [
-                    {
-                        "description": "campaign payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    }
-                }
-            }
-        },
-        "/discount-campaigns/{id}/items": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "discounts"
-                ],
-                "summary": "Add item to discount campaign (Wholesaler)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "campaign id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "discount item payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    }
-                }
-            }
-        },
         "/inventory/movements": {
             "post": {
                 "security": [
@@ -811,12 +382,12 @@
                 "tags": [
                     "inventory"
                 ],
-                "summary": "Get current stock by medicine (Wholesaler)",
+                "summary": "Get current stock by offer (Wholesaler)",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "medicine id",
-                        "name": "medicine_id",
+                        "description": "offer id",
+                        "name": "offer_id",
                         "in": "query",
                         "required": true
                     }
@@ -844,7 +415,7 @@
                 }
             }
         },
-        "/manufacturer-requests": {
+        "/notifications/": {
             "get": {
                 "security": [
                     {
@@ -855,16 +426,10 @@
                     "application/json"
                 ],
                 "tags": [
-                    "manufacturer"
+                    "notifications"
                 ],
-                "summary": "List manufacturer requests",
+                "summary": "List notifications",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "status",
-                        "name": "status",
-                        "in": "query"
-                    },
                     {
                         "type": "integer",
                         "description": "limit",
@@ -875,6 +440,12 @@
                         "type": "string",
                         "description": "cursor",
                         "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "unread only",
+                        "name": "unread_only",
                         "in": "query"
                     }
                 ],
@@ -897,9 +468,36 @@
                         "schema": {
                             "$ref": "#/definitions/response.ErrorEnvelope"
                         }
+                    }
+                }
+            }
+        },
+        "/notifications/devices": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "List notification devices",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.NotificationDevice"
+                            }
+                        }
                     },
-                    "403": {
-                        "description": "Forbidden",
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorEnvelope"
                         }
@@ -919,26 +517,25 @@
                     "application/json"
                 ],
                 "tags": [
-                    "manufacturer"
+                    "notifications"
                 ],
-                "summary": "Create manufacturer request (Wholesaler)",
+                "summary": "Register or refresh notification device",
                 "parameters": [
                     {
-                        "description": "manufacturer request payload",
+                        "description": "device payload",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/notifications.DeviceUpsertInput"
                         }
                     }
                 ],
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.NotificationDevice"
                         }
                     },
                     "400": {
@@ -952,57 +549,41 @@
                         "schema": {
                             "$ref": "#/definitions/response.ErrorEnvelope"
                         }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
                     }
                 }
             }
         },
-        "/manufacturer-requests/{id}/quotes": {
-            "post": {
+        "/notifications/devices/{id}": {
+            "delete": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "manufacturer"
+                    "notifications"
                 ],
-                "summary": "Create manufacturer quote (Manufacturer)",
+                "summary": "Deactivate notification device",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "manufacturer request id",
+                        "description": "device id",
                         "name": "id",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "description": "quote payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object"
-                        }
                     }
                 ],
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": true
+                            "additionalProperties": {
+                                "type": "boolean"
+                            }
                         }
                     },
                     "400": {
@@ -1017,8 +598,8 @@
                             "$ref": "#/definitions/response.ErrorEnvelope"
                         }
                     },
-                    "403": {
-                        "description": "Forbidden",
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorEnvelope"
                         }
@@ -1026,110 +607,36 @@
                 }
             }
         },
-        "/medicine-candidates/": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "catalog"
-                ],
-                "summary": "Submit new medicine candidate for admin review (Wholesaler)",
-                "parameters": [
-                    {
-                        "description": "medicine candidate payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/catalog.CreateMedicineCandidateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/catalog.MedicineCandidateResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    }
-                }
-            }
-        },
-        "/medicines": {
+        "/notifications/preferences": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "catalog"
+                    "notifications"
                 ],
-                "summary": "List/search medicines",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "search query",
-                        "name": "query",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "limit",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "cursor",
-                        "name": "cursor",
-                        "in": "query"
-                    }
-                ],
+                "summary": "Get notification preferences",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.NotificationPreference"
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorEnvelope"
                         }
                     }
                 }
-            }
-        },
-        "/medicines/validate": {
-            "post": {
+            },
+            "put": {
                 "security": [
                     {
                         "BearerAuth": []
@@ -1142,17 +649,17 @@
                     "application/json"
                 ],
                 "tags": [
-                    "catalog"
+                    "notifications"
                 ],
-                "summary": "Validate medicine import row (Wholesaler)",
+                "summary": "Update notification preferences",
                 "parameters": [
                     {
-                        "description": "medicine import payload",
+                        "description": "preferences payload",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/catalog.MedicineImportPayload"
+                            "$ref": "#/definitions/notifications.PreferencePatch"
                         }
                     }
                 ],
@@ -1160,7 +667,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/catalog.ImportValidationResponse"
+                            "$ref": "#/definitions/model.NotificationPreference"
                         }
                     },
                     "400": {
@@ -1171,6 +678,93 @@
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/read-all": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Mark all notifications as read",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "boolean"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/{id}/read": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Mark notification as read",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "notification id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "boolean"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorEnvelope"
                         }
@@ -1190,8 +784,8 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "medicine id",
-                        "name": "medicine_id",
+                        "description": "offer name query",
+                        "name": "query",
                         "in": "query"
                     },
                     {
@@ -1258,6 +852,56 @@
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/offers/batch": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "offers"
+                ],
+                "summary": "Create offers in batch (Wholesaler)",
+                "parameters": [
+                    {
+                        "description": "batch offer payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/offers.BatchCreateInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/offers.BatchCreateResult"
                         }
                     },
                     "400": {
@@ -1668,234 +1312,6 @@
                 }
             }
         },
-        "/rare-requests": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "rare"
-                ],
-                "summary": "List rare requests",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "status",
-                        "name": "status",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "limit",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "cursor",
-                        "name": "cursor",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "rare"
-                ],
-                "summary": "Create rare request (Pharmacy)",
-                "parameters": [
-                    {
-                        "description": "rare request payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    }
-                }
-            }
-        },
-        "/rare-requests/bids/{id}/select": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "rare"
-                ],
-                "summary": "Select rare bid (Pharmacy)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "rare bid id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    }
-                }
-            }
-        },
-        "/rare-requests/{id}/bids": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "rare"
-                ],
-                "summary": "Create rare bid (Wholesaler)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "rare request id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "rare bid payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
-                        }
-                    }
-                }
-            }
-        },
         "/stream/offers": {
             "get": {
                 "produces": [
@@ -1917,342 +1333,92 @@
         }
     },
     "definitions": {
-        "catalog.ApproveMedicineCandidateRequest": {
+        "model.NotificationDevice": {
             "type": "object",
             "properties": {
-                "atc_code": {
+                "createdAt": {
                     "type": "string"
                 },
-                "brand_name": {
+                "deviceLabel": {
                     "type": "string"
                 },
-                "decision_note": {
+                "id": {
                     "type": "string"
                 },
-                "form": {
-                    "type": "string"
-                },
-                "generic_name": {
-                    "type": "string"
-                },
-                "is_active": {
+                "isActive": {
                     "type": "boolean"
                 },
-                "medicine_id": {
+                "lastSeenAt": {
                     "type": "string"
                 },
-                "pack_size": {
+                "platform": {
+                    "$ref": "#/definitions/model.NotificationDevicePlatform"
+                },
+                "token": {
                     "type": "string"
                 },
-                "strength": {
-                    "type": "string"
-                }
-            }
-        },
-        "catalog.ApproveMedicineCandidateResponse": {
-            "type": "object",
-            "properties": {
-                "candidate": {
-                    "$ref": "#/definitions/catalog.MedicineCandidateResponse"
-                },
-                "medicine": {
-                    "$ref": "#/definitions/catalog.MedicineSummary"
-                }
-            }
-        },
-        "catalog.CreateMedicineCandidateRequest": {
-            "type": "object",
-            "properties": {
-                "atc_code": {
+                "updatedAt": {
                     "type": "string"
                 },
-                "brand_name": {
-                    "type": "string"
-                },
-                "force_submit": {
-                    "type": "boolean"
-                },
-                "form": {
-                    "type": "string"
-                },
-                "generic_name": {
-                    "type": "string"
-                },
-                "pack_size": {
-                    "type": "string"
-                },
-                "strength": {
+                "userID": {
                     "type": "string"
                 }
             }
         },
-        "catalog.ImportValidationResponse": {
-            "type": "object",
-            "properties": {
-                "candidates": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/catalog.MedicineSuggestion"
-                    }
-                },
-                "matched_medicine": {
-                    "$ref": "#/definitions/catalog.MedicineSummary"
-                },
-                "normalized": {
-                    "$ref": "#/definitions/catalog.NormalizedMedicineInput"
-                },
-                "pending_candidate": {
-                    "$ref": "#/definitions/catalog.PendingCandidateSummary"
-                },
-                "status": {
-                    "$ref": "#/definitions/catalog.MatchStatus"
-                },
-                "suggested_medicine": {
-                    "$ref": "#/definitions/catalog.MedicineSuggestion"
-                },
-                "warnings": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/catalog.ValidationWarning"
-                    }
-                }
-            }
-        },
-        "catalog.ListMedicineCandidatesResponse": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/catalog.MedicineCandidateResponse"
-                    }
-                }
-            }
-        },
-        "catalog.MatchStatus": {
+        "model.NotificationDevicePlatform": {
             "type": "string",
             "enum": [
-                "MATCHED",
-                "AMBIGUOUS",
-                "SUGGESTED_MATCH",
-                "NEW_MEDICINE",
-                "PENDING_REVIEW"
+                "ANDROID",
+                "WEB"
             ],
             "x-enum-varnames": [
-                "MatchStatusMatched",
-                "MatchStatusAmbiguous",
-                "MatchStatusSuggestedMatch",
-                "MatchStatusNewMedicine",
-                "MatchStatusPendingReview"
+                "NotificationDevicePlatformAndroid",
+                "NotificationDevicePlatformWeb"
             ]
         },
-        "catalog.MedicineCandidateResponse": {
+        "model.NotificationPreference": {
             "type": "object",
             "properties": {
-                "admin_decision_note": {
-                    "type": "string"
-                },
-                "atc_code": {
-                    "type": "string"
-                },
-                "brand_name": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "form": {
-                    "type": "string"
-                },
-                "generic_name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "matched_medicine_id": {
-                    "type": "string"
-                },
-                "pack_size": {
-                    "type": "string"
-                },
-                "reviewed_at": {
-                    "type": "string"
-                },
-                "reviewed_by": {
-                    "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/model.MedicineCandidateStatus"
-                },
-                "strength": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "wholesaler_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "catalog.MedicineImportPayload": {
-            "type": "object",
-            "properties": {
-                "atc_code": {
-                    "type": "string"
-                },
-                "brand_name": {
-                    "type": "string"
-                },
-                "form": {
-                    "type": "string"
-                },
-                "generic_name": {
-                    "type": "string"
-                },
-                "pack_size": {
-                    "type": "string"
-                },
-                "strength": {
-                    "type": "string"
-                }
-            }
-        },
-        "catalog.MedicineSuggestion": {
-            "type": "object",
-            "properties": {
-                "medicine": {
-                    "$ref": "#/definitions/catalog.MedicineSummary"
-                },
-                "score": {
-                    "type": "number"
-                }
-            }
-        },
-        "catalog.MedicineSummary": {
-            "type": "object",
-            "properties": {
-                "atc_code": {
-                    "type": "string"
-                },
-                "brand_name": {
-                    "type": "string"
-                },
-                "form": {
-                    "type": "string"
-                },
-                "generic_name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "is_active": {
+                "accessUpdated": {
                     "type": "boolean"
                 },
-                "pack_size": {
+                "createdAt": {
                     "type": "string"
                 },
-                "strength": {
-                    "type": "string"
-                }
-            }
-        },
-        "catalog.NormalizedMedicineInput": {
-            "type": "object",
-            "properties": {
-                "brand_name": {
-                    "type": "string"
-                },
-                "form": {
-                    "type": "string"
-                },
-                "generic_name": {
-                    "type": "string"
-                },
-                "strength": {
-                    "type": "string"
-                }
-            }
-        },
-        "catalog.PendingCandidateSummary": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/model.MedicineCandidateStatus"
-                }
-            }
-        },
-        "catalog.RejectMedicineCandidateRequest": {
-            "type": "object",
-            "properties": {
-                "decision_note": {
-                    "type": "string"
-                }
-            }
-        },
-        "catalog.UpsertMedicineInput": {
-            "type": "object",
-            "properties": {
-                "atc_code": {
-                    "type": "string"
-                },
-                "brand_name": {
-                    "type": "string"
-                },
-                "form": {
-                    "type": "string"
-                },
-                "generic_name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "is_active": {
+                "inAppEnabled": {
                     "type": "boolean"
                 },
-                "pack_size": {
+                "manufacturerQuoteCreated": {
+                    "type": "boolean"
+                },
+                "manufacturerRequestCreated": {
+                    "type": "boolean"
+                },
+                "orderCreated": {
+                    "type": "boolean"
+                },
+                "orderStatusChanged": {
+                    "type": "boolean"
+                },
+                "paymentUpdated": {
+                    "type": "boolean"
+                },
+                "pushEnabled": {
+                    "type": "boolean"
+                },
+                "rareBidReceived": {
+                    "type": "boolean"
+                },
+                "rareBidSelected": {
+                    "type": "boolean"
+                },
+                "updatedAt": {
                     "type": "string"
                 },
-                "strength": {
+                "userID": {
                     "type": "string"
                 }
             }
-        },
-        "catalog.ValidationWarning": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string"
-                },
-                "field": {
-                    "type": "string"
-                },
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.MedicineCandidateStatus": {
-            "type": "string",
-            "enum": [
-                "PENDING",
-                "APPROVED",
-                "REJECTED"
-            ],
-            "x-enum-varnames": [
-                "MedicineCandidateStatusPending",
-                "MedicineCandidateStatusApproved",
-                "MedicineCandidateStatusRejected"
-            ]
         },
         "model.OrderStatus": {
             "type": "string",
@@ -2288,12 +1454,142 @@
                 "UserRoleAdmin"
             ]
         },
+        "model.WholesalerOffer": {
+            "type": "object",
+            "properties": {
+                "availableQty": {
+                    "type": "integer"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "displayPrice": {
+                    "type": "number"
+                },
+                "expiryDate": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isActive": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "producer": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "wholesalerID": {
+                    "type": "string"
+                }
+            }
+        },
+        "notifications.DeviceUpsertInput": {
+            "type": "object",
+            "properties": {
+                "device_label": {
+                    "type": "string"
+                },
+                "platform": {
+                    "$ref": "#/definitions/model.NotificationDevicePlatform"
+                },
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "notifications.PreferencePatch": {
+            "type": "object",
+            "properties": {
+                "access_updated": {
+                    "type": "boolean"
+                },
+                "in_app_enabled": {
+                    "type": "boolean"
+                },
+                "manufacturer_quote_created": {
+                    "type": "boolean"
+                },
+                "manufacturer_request_created": {
+                    "type": "boolean"
+                },
+                "order_created": {
+                    "type": "boolean"
+                },
+                "order_status_changed": {
+                    "type": "boolean"
+                },
+                "payment_updated": {
+                    "type": "boolean"
+                },
+                "push_enabled": {
+                    "type": "boolean"
+                },
+                "rare_bid_received": {
+                    "type": "boolean"
+                },
+                "rare_bid_selected": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "offers.BatchCreateInput": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/offers.UpsertOfferInput"
+                    }
+                }
+            }
+        },
+        "offers.BatchCreateResult": {
+            "type": "object",
+            "properties": {
+                "created_count": {
+                    "type": "integer"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/offers.BatchError"
+                    }
+                },
+                "failed_count": {
+                    "type": "integer"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.WholesalerOffer"
+                    }
+                }
+            }
+        },
+        "offers.BatchError": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "details": {},
+                "index": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
         "offers.UpsertOfferInput": {
             "type": "object",
             "properties": {
-                "currency": {
-                    "type": "string"
-                },
                 "display_price": {
                     "type": "string"
                 },
@@ -2303,7 +1599,10 @@
                 "is_active": {
                     "type": "boolean"
                 },
-                "medicine_id": {
+                "name": {
+                    "type": "string"
+                },
+                "producer": {
                     "type": "string"
                 }
             }
@@ -2311,29 +1610,23 @@
         "orders.OrderItemSummary": {
             "type": "object",
             "properties": {
-                "BrandName": {
-                    "type": "string"
-                },
-                "Form": {
-                    "type": "string"
-                },
-                "GenericName": {
-                    "type": "string"
-                },
                 "ID": {
+                    "type": "string"
+                },
+                "ItemName": {
                     "type": "string"
                 },
                 "LineTotal": {
                     "type": "number"
                 },
-                "MedicineID": {
+                "OfferID": {
+                    "type": "string"
+                },
+                "Producer": {
                     "type": "string"
                 },
                 "Qty": {
                     "type": "integer"
-                },
-                "Strength": {
-                    "type": "string"
                 },
                 "UnitPrice": {
                     "type": "number"

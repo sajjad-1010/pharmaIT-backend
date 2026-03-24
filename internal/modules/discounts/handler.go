@@ -108,7 +108,7 @@ func (h *Handler) addItem(c *fiber.Ctx) error {
 	}
 
 	var req struct {
-		MedicineID    uuid.UUID          `json:"medicine_id"`
+		OfferID       uuid.UUID          `json:"offer_id"`
 		DiscountType  model.DiscountType `json:"discount_type"`
 		DiscountValue string             `json:"discount_value"`
 	}
@@ -118,7 +118,7 @@ func (h *Handler) addItem(c *fiber.Ctx) error {
 
 	out, err := h.svc.AddItem(c.UserContext(), wholesalerID, CreateItemInput{
 		CampaignID:    campaignID,
-		MedicineID:    req.MedicineID,
+		OfferID:       req.OfferID,
 		DiscountType:  req.DiscountType,
 		DiscountValue: req.DiscountValue,
 	})
@@ -167,4 +167,3 @@ func parseOptionalRFC3339(input *string) (*time.Time, error) {
 	}
 	return &t, nil
 }
-

@@ -57,11 +57,10 @@ func (h *Handler) createRequest(c *fiber.Ctx) error {
 	}
 
 	var req struct {
-		MedicineID        *uuid.UUID `json:"medicine_id"`
-		RequestedNameText *string    `json:"requested_name_text"`
-		Qty               int        `json:"qty"`
-		DeadlineAt        string     `json:"deadline_at"`
-		Notes             *string    `json:"notes"`
+		RequestedNameText *string `json:"requested_name_text"`
+		Qty               int     `json:"qty"`
+		DeadlineAt        string  `json:"deadline_at"`
+		Notes             *string `json:"notes"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return response.Fail(c, appErr.BadRequest("INVALID_BODY", "invalid request body", nil))
@@ -74,7 +73,6 @@ func (h *Handler) createRequest(c *fiber.Ctx) error {
 
 	out, err := h.svc.CreateRequest(c.UserContext(), CreateRequestInput{
 		PharmacyID:        pharmacyID,
-		MedicineID:        req.MedicineID,
 		RequestedNameText: req.RequestedNameText,
 		Qty:               req.Qty,
 		DeadlineAt:        deadline,
@@ -221,4 +219,3 @@ func (h *Handler) selectBid(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusOK, fiber.Map{"ok": true})
 }
-

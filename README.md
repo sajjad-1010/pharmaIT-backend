@@ -2,6 +2,12 @@
 
 Backend service for PharmaLink B2B pharma marketplace.
 
+Current product model:
+- wholesaler offers are the primary searchable items
+- required fields: `name`, `display_price`
+- optional fields: `expiry_date`, `producer`
+- search is performed on offer `name`
+
 ## Stack
 - Go + Fiber
 - PostgreSQL + GORM
@@ -43,6 +49,8 @@ Copy from `.env.example`. Important variables:
 - `PAYMENT_WEBHOOK_SECRET`
 - `POSTGRES_*`
 - `REDIS_*`
+- `NOTIFICATION_PUSH_PROVIDER`
+- `FCM_CREDENTIALS_FILE` or `FCM_CREDENTIALS_JSON`
 - `OUTBOX_CHANNEL`
 
 ## API Base Path
@@ -52,4 +60,5 @@ Copy from `.env.example`. Important variables:
 - [Run Guide](docs/RUN.md)
 - [Developer Guide](docs/DEVELOPER.md)
 - [API Testing](docs/API_TESTING.md)
-- [Frontend Catalog Import](docs/FRONTEND_CATALOG_IMPORT.md)
+- [Notifications](docs/NOTIFICATIONS.md)
+- [Frontend API Contract](docs/FRONTEND_CATALOG_IMPORT.md)

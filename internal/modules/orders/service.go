@@ -62,15 +62,13 @@ type OrderSummary struct {
 }
 
 type OrderItemSummary struct {
-	ID          uuid.UUID       `json:"ID"`
-	MedicineID  uuid.UUID       `json:"MedicineID"`
-	GenericName string          `json:"GenericName"`
-	BrandName   *string         `json:"BrandName,omitempty"`
-	Form        string          `json:"Form"`
-	Strength    *string         `json:"Strength,omitempty"`
-	Qty         int             `json:"Qty"`
-	UnitPrice   decimal.Decimal `json:"UnitPrice"`
-	LineTotal   decimal.Decimal `json:"LineTotal"`
+	ID        uuid.UUID       `json:"ID"`
+	OfferID   uuid.UUID       `json:"OfferID"`
+	ItemName  string          `json:"ItemName"`
+	Producer  *string         `json:"Producer,omitempty"`
+	Qty       int             `json:"Qty"`
+	UnitPrice decimal.Decimal `json:"UnitPrice"`
+	LineTotal decimal.Decimal `json:"LineTotal"`
 }
 
 func (s *Service) CreateOrder(ctx context.Context, input CreateOrderInput) (*OrderSummary, error) {
@@ -110,7 +108,7 @@ func (s *Service) CreateOrder(ctx context.Context, input CreateOrderInput) (*Ord
 				return appErr.Internal("failed to lock offer")
 			}
 
-			available, err := s.inventorySvc.CurrentAvailable(ctx, tx, offer.WholesalerID, offer.MedicineID)
+			available, err := s.inventorySvc.CurrentAvailable(ctx, tx, offer.WholesalerID, offer.ID)
 			if err != nil {
 				return err
 			}
@@ -123,12 +121,14 @@ func (s *Service) CreateOrder(ctx context.Context, input CreateOrderInput) (*Ord
 
 			lineTotal := offer.DisplayPrice.Mul(decimal.NewFromInt(int64(item.Qty)))
 			orderItem := model.OrderItem{
-				ID:         uuid.New(),
-				OrderID:    order.ID,
-				MedicineID: offer.MedicineID,
-				Qty:        item.Qty,
-				UnitPrice:  offer.DisplayPrice,
-				LineTotal:  lineTotal,
+				ID:        uuid.New(),
+				OrderID:   order.ID,
+				OfferID:   offer.ID,
+				ItemName:  offer.Name,
+				Producer:  offer.Producer,
+				Qty:       item.Qty,
+				UnitPrice: offer.DisplayPrice,
+				LineTotal: lineTotal,
 			}
 			if err := tx.Create(&orderItem).Error; err != nil {
 				return appErr.Internal("failed to create order item")
@@ -138,7 +138,7 @@ func (s *Service) CreateOrder(ctx context.Context, input CreateOrderInput) (*Ord
 			refID := order.ID
 			if _, err := s.inventorySvc.AddMovement(ctx, tx, inventory.MovementInput{
 				WholesalerID: offer.WholesalerID,
-				MedicineID:   offer.MedicineID,
+				OfferID:      offer.ID,
 				Type:         model.InventoryMovementTypeReserved,
 				Qty:          item.Qty,
 				RefType:      &refType,
@@ -160,7 +160,7 @@ func (s *Service) CreateOrder(ctx context.Context, input CreateOrderInput) (*Ord
 				Payload: map[string]interface{}{
 					"offer_id":      offer.ID,
 					"wholesaler_id": offer.WholesalerID,
-					"medicine_id":   offer.MedicineID,
+					"name":          offer.Name,
 					"available_qty": available - item.Qty,
 					"order_id":      order.ID,
 				},
@@ -370,23 +370,20 @@ func (s *Service) loadOrderSummaries(ctx context.Context, orders []model.Order) 
 	}
 
 	type orderItemRow struct {
-		ID          uuid.UUID
-		OrderID     uuid.UUID
-		MedicineID  uuid.UUID
-		GenericName string
-		BrandName   *string
-		Form        string
-		Strength    *string
-		Qty         int
-		UnitPrice   decimal.Decimal
-		LineTotal   decimal.Decimal
+		ID        uuid.UUID
+		OrderID   uuid.UUID
+		OfferID   uuid.UUID
+		ItemName  string
+		Producer  *string
+		Qty       int
+		UnitPrice decimal.Decimal
+		LineTotal decimal.Decimal
 	}
 
 	var itemRows []orderItemRow
 	if err := s.db.WithContext(ctx).
 		Table("order_items").
-		Select("order_items.id, order_items.order_id, order_items.medicine_id, medicines.generic_name, medicines.brand_name, medicines.form, medicines.strength, order_items.qty, order_items.unit_price, order_items.line_total").
-		Joins("LEFT JOIN medicines ON medicines.id = order_items.medicine_id").
+		Select("order_items.id, order_items.order_id, order_items.offer_id, order_items.item_name, order_items.producer, order_items.qty, order_items.unit_price, order_items.line_total").
 		Where("order_items.order_id IN ?", orderIDs).
 		Order("order_items.id ASC").
 		Scan(&itemRows).Error; err != nil {
@@ -396,15 +393,13 @@ func (s *Service) loadOrderSummaries(ctx context.Context, orders []model.Order) 
 	itemsByOrder := make(map[uuid.UUID][]OrderItemSummary, len(orders))
 	for _, row := range itemRows {
 		itemsByOrder[row.OrderID] = append(itemsByOrder[row.OrderID], OrderItemSummary{
-			ID:          row.ID,
-			MedicineID:  row.MedicineID,
-			GenericName: row.GenericName,
-			BrandName:   row.BrandName,
-			Form:        row.Form,
-			Strength:    row.Strength,
-			Qty:         row.Qty,
-			UnitPrice:   row.UnitPrice,
-			LineTotal:   row.LineTotal,
+			ID:        row.ID,
+			OfferID:   row.OfferID,
+			ItemName:  row.ItemName,
+			Producer:  row.Producer,
+			Qty:       row.Qty,
+			UnitPrice: row.UnitPrice,
+			LineTotal: row.LineTotal,
 		})
 	}
 

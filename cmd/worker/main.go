@@ -12,6 +12,7 @@ import (
 	"pharmalink/server/internal/config"
 	"pharmalink/server/internal/db"
 	"pharmalink/server/internal/logger"
+	"pharmalink/server/internal/modules/notifications"
 	"pharmalink/server/internal/modules/outbox"
 	"pharmalink/server/internal/worker"
 
@@ -48,7 +49,9 @@ func main() {
 
 	outboxSvc := outbox.NewService(dbConn, cfg.OutboxChannel)
 	enqueuer := asynqjobs.NewEnqueuer(asynqClient)
-	processor := worker.NewOutboxProcessor(outboxSvc, redisClient, nil, enqueuer, log)
+	pushProvider := notifications.NewPushProvider(cfg.Notification, log)
+	notificationSvc := notifications.NewService(dbConn, pushProvider, log)
+	processor := worker.NewOutboxProcessor(outboxSvc, redisClient, nil, enqueuer, notificationSvc, log)
 	listener := worker.NewOutboxListener(cfg.Postgres, cfg.OutboxChannel, processor, log)
 	asynqRunner := worker.NewAsynqRunner(cfg.Redis, processor, log)
 
@@ -76,4 +79,3 @@ func main() {
 	cancel()
 	time.Sleep(2 * time.Second)
 }
-

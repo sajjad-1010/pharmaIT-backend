@@ -6,4 +6,5 @@ dist/
 coverage.out
 *.log
 vendor/
+logs/
 

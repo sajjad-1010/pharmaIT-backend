@@ -10,7 +10,6 @@ import (
 	appErr "pharmalink/server/internal/common/errors"
 	"pharmalink/server/internal/db/model"
 	"pharmalink/server/internal/http/pagination"
-	"pharmalink/server/internal/modules/inventory"
 	"pharmalink/server/internal/modules/outbox"
 
 	"github.com/google/uuid"
@@ -20,29 +19,28 @@ import (
 )
 
 type Service struct {
-	db           *gorm.DB
-	redis        *redis.Client
-	outbox       *outbox.Service
-	inventorySvc *inventory.Service
+	db     *gorm.DB
+	redis  *redis.Client
+	outbox *outbox.Service
 }
 
-func NewService(db *gorm.DB, redis *redis.Client, outboxSvc *outbox.Service, inventorySvc *inventory.Service) *Service {
+func NewService(db *gorm.DB, redis *redis.Client, outboxSvc *outbox.Service) *Service {
 	return &Service{
-		db:           db,
-		redis:        redis,
-		outbox:       outboxSvc,
-		inventorySvc: inventorySvc,
+		db:     db,
+		redis:  redis,
+		outbox: outboxSvc,
 	}
 }
 
 type ListInput struct {
-	MedicineID *uuid.UUID
-	Limit      int
-	Cursor     *pagination.Cursor
+	Query  string
+	Limit  int
+	Cursor *pagination.Cursor
 }
 
 func (s *Service) List(ctx context.Context, input ListInput) (pagination.Result[model.WholesalerOffer], error) {
-	cacheKey := fmt.Sprintf("offers:medicine=%v:limit=%d:cursor=%v", input.MedicineID, input.Limit, input.Cursor)
+	query := strings.TrimSpace(input.Query)
+	cacheKey := fmt.Sprintf("offers:query=%s:limit=%d:cursor=%v", strings.ToLower(query), input.Limit, input.Cursor)
 	if s.redis != nil {
 		if cached, err := s.redis.Get(ctx, cacheKey).Result(); err == nil {
 			var out pagination.Result[model.WholesalerOffer]
@@ -53,8 +51,9 @@ func (s *Service) List(ctx context.Context, input ListInput) (pagination.Result[
 	}
 
 	q := s.db.WithContext(ctx).Model(&model.WholesalerOffer{}).Where("is_active = TRUE")
-	if input.MedicineID != nil {
-		q = q.Where("medicine_id = ?", *input.MedicineID)
+	if query != "" {
+		like := "%" + query + "%"
+		q = q.Where("name ILIKE ? OR similarity(name, ?) > 0.15", like, query)
 	}
 	if input.Cursor != nil {
 		q = q.Where("(updated_at, id) < (?, ?)", input.Cursor.Timestamp, input.Cursor.ID)
@@ -80,54 +79,72 @@ func (s *Service) List(ctx context.Context, input ListInput) (pagination.Result[
 }
 
 type UpsertOfferInput struct {
-	MedicineID   uuid.UUID `json:"medicine_id"`
-	DisplayPrice string    `json:"display_price"`
-	Currency     string    `json:"currency"`
-	ExpiryDate   *string   `json:"expiry_date"`
-	IsActive     *bool     `json:"is_active"`
+	Name         string  `json:"name"`
+	DisplayPrice string  `json:"display_price"`
+	ExpiryDate   *string `json:"expiry_date"`
+	Producer     *string `json:"producer"`
+	IsActive     *bool   `json:"is_active"`
 }
 
-func (s *Service) Create(ctx context.Context, wholesalerID uuid.UUID, input UpsertOfferInput) (*model.WholesalerOffer, error) {
+type BatchCreateInput struct {
+	Items []UpsertOfferInput `json:"items"`
+}
+
+type BatchError struct {
+	Index   int         `json:"index"`
+	Code    string      `json:"code"`
+	Message string      `json:"message"`
+	Details interface{} `json:"details,omitempty"`
+}
+
+type BatchCreateResult struct {
+	CreatedCount int                     `json:"created_count"`
+	FailedCount  int                     `json:"failed_count"`
+	Items        []model.WholesalerOffer `json:"items"`
+	Errors       []BatchError            `json:"errors"`
+}
+
+func (s *Service) buildOffer(wholesalerID uuid.UUID, input UpsertOfferInput) (*model.WholesalerOffer, error) {
+	name := strings.TrimSpace(input.Name)
+	if name == "" {
+		return nil, appErr.BadRequest("INVALID_NAME", "name is required", nil)
+	}
+
 	price, err := decimal.NewFromString(strings.TrimSpace(input.DisplayPrice))
 	if err != nil || price.IsNegative() {
 		return nil, appErr.BadRequest("INVALID_DISPLAY_PRICE", "display_price must be non-negative decimal", nil)
-	}
-	if s.inventorySvc == nil {
-		return nil, appErr.Internal("inventory service is not configured")
 	}
 
 	offer := &model.WholesalerOffer{
 		ID:           uuid.New(),
 		WholesalerID: wholesalerID,
-		MedicineID:   input.MedicineID,
+		Name:         name,
+		Producer:     trimOptional(input.Producer),
 		DisplayPrice: price,
-		Currency:     strings.ToUpper(strings.TrimSpace(input.Currency)),
 		AvailableQty: 0,
-		MinOrderQty:  1,
 		IsActive:     true,
 	}
 	if input.IsActive != nil {
 		offer.IsActive = *input.IsActive
 	}
 	if input.ExpiryDate != nil && strings.TrimSpace(*input.ExpiryDate) != "" {
-		if parsed, err := time.Parse("2006-01-02", strings.TrimSpace(*input.ExpiryDate)); err == nil {
-			offer.ExpiryDate = &parsed
-		} else {
+		parsed, err := time.Parse("2006-01-02", strings.TrimSpace(*input.ExpiryDate))
+		if err != nil {
 			return nil, appErr.BadRequest("INVALID_EXPIRY_DATE", "expiry_date must be YYYY-MM-DD", nil)
 		}
+		offer.ExpiryDate = &parsed
+	}
+	return offer, nil
+}
+
+func (s *Service) Create(ctx context.Context, wholesalerID uuid.UUID, input UpsertOfferInput) (*model.WholesalerOffer, error) {
+	offer, err := s.buildOffer(wholesalerID, input)
+	if err != nil {
+		return nil, err
 	}
 
 	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		available, err := s.inventorySvc.CurrentAvailable(ctx, tx, wholesalerID, input.MedicineID)
-		if err != nil {
-			return err
-		}
-		offer.AvailableQty = available
-
 		if err := tx.Create(offer).Error; err != nil {
-			if strings.Contains(strings.ToLower(err.Error()), "uq_wholesaler_medicine_active_offer") {
-				return appErr.Conflict("ACTIVE_OFFER_EXISTS", "active offer already exists for this medicine", nil)
-			}
 			return appErr.Internal("failed to create offer")
 		}
 
@@ -136,7 +153,8 @@ func (s *Service) Create(ctx context.Context, wholesalerID uuid.UUID, input Upse
 			Payload: map[string]interface{}{
 				"offer_id":      offer.ID,
 				"wholesaler_id": offer.WholesalerID,
-				"medicine_id":   offer.MedicineID,
+				"name":          offer.Name,
+				"producer":      offer.Producer,
 				"display_price": offer.DisplayPrice.StringFixed(4),
 				"available_qty": offer.AvailableQty,
 				"is_active":     offer.IsActive,
@@ -153,11 +171,72 @@ func (s *Service) Create(ctx context.Context, wholesalerID uuid.UUID, input Upse
 	return offer, nil
 }
 
-func (s *Service) Update(ctx context.Context, wholesalerID, offerID uuid.UUID, input UpsertOfferInput) (*model.WholesalerOffer, error) {
-	if s.inventorySvc == nil {
-		return nil, appErr.Internal("inventory service is not configured")
+func (s *Service) CreateBatch(ctx context.Context, wholesalerID uuid.UUID, input BatchCreateInput) (*BatchCreateResult, error) {
+	if len(input.Items) == 0 {
+		return nil, appErr.BadRequest("EMPTY_BATCH", "items are required", nil)
+	}
+	if len(input.Items) > 10000 {
+		return nil, appErr.BadRequest("BATCH_TOO_LARGE", "items limit is 10000", nil)
 	}
 
+	result := &BatchCreateResult{
+		Items:  make([]model.WholesalerOffer, 0, len(input.Items)),
+		Errors: make([]BatchError, 0),
+	}
+
+	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for idx, item := range input.Items {
+			offer, err := s.buildOffer(wholesalerID, item)
+			if err != nil {
+				var appE appErr.AppError
+				if ok := errorAs(err, &appE); ok {
+					result.Errors = append(result.Errors, BatchError{
+						Index:   idx,
+						Code:    appE.Code,
+						Message: appE.Message,
+						Details: appE.Details,
+					})
+					continue
+				}
+				return err
+			}
+
+			if err := tx.Create(offer).Error; err != nil {
+				return appErr.Internal("failed to create offer batch")
+			}
+
+			outboxRow, err := s.outbox.Write(ctx, tx, outbox.Event{
+				Type: "offer.updated",
+				Payload: map[string]interface{}{
+					"offer_id":      offer.ID,
+					"wholesaler_id": offer.WholesalerID,
+					"name":          offer.Name,
+					"producer":      offer.Producer,
+					"display_price": offer.DisplayPrice.StringFixed(4),
+					"available_qty": offer.AvailableQty,
+					"is_active":     offer.IsActive,
+				},
+			})
+			if err != nil {
+				return err
+			}
+			if err := s.outbox.Notify(ctx, tx, outboxRow.ID); err != nil {
+				return err
+			}
+
+			result.Items = append(result.Items, *offer)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	result.CreatedCount = len(result.Items)
+	result.FailedCount = len(result.Errors)
+	return result, nil
+}
+
+func (s *Service) Update(ctx context.Context, wholesalerID, offerID uuid.UUID, input UpsertOfferInput) (*model.WholesalerOffer, error) {
 	var offer model.WholesalerOffer
 	if err := s.db.WithContext(ctx).
 		First(&offer, "id = ? AND wholesaler_id = ?", offerID, wholesalerID).Error; err != nil {
@@ -168,6 +247,9 @@ func (s *Service) Update(ctx context.Context, wholesalerID, offerID uuid.UUID, i
 	}
 
 	updates := map[string]interface{}{}
+	if strings.TrimSpace(input.Name) != "" {
+		updates["name"] = strings.TrimSpace(input.Name)
+	}
 	if strings.TrimSpace(input.DisplayPrice) != "" {
 		price, err := decimal.NewFromString(strings.TrimSpace(input.DisplayPrice))
 		if err != nil || price.IsNegative() {
@@ -175,8 +257,8 @@ func (s *Service) Update(ctx context.Context, wholesalerID, offerID uuid.UUID, i
 		}
 		updates["display_price"] = price
 	}
-	if strings.TrimSpace(input.Currency) != "" {
-		updates["currency"] = strings.ToUpper(strings.TrimSpace(input.Currency))
+	if input.Producer != nil {
+		updates["producer"] = trimOptional(input.Producer)
 	}
 	if input.IsActive != nil {
 		updates["is_active"] = *input.IsActive
@@ -198,12 +280,6 @@ func (s *Service) Update(ctx context.Context, wholesalerID, offerID uuid.UUID, i
 	}
 
 	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		available, err := s.inventorySvc.CurrentAvailable(ctx, tx, wholesalerID, offer.MedicineID)
-		if err != nil {
-			return err
-		}
-		updates["available_qty"] = available
-
 		if err := tx.Model(&model.WholesalerOffer{}).
 			Where("id = ? AND wholesaler_id = ?", offerID, wholesalerID).
 			Updates(updates).Error; err != nil {
@@ -219,7 +295,8 @@ func (s *Service) Update(ctx context.Context, wholesalerID, offerID uuid.UUID, i
 			Payload: map[string]interface{}{
 				"offer_id":      offer.ID,
 				"wholesaler_id": offer.WholesalerID,
-				"medicine_id":   offer.MedicineID,
+				"name":          offer.Name,
+				"producer":      offer.Producer,
 				"display_price": offer.DisplayPrice.StringFixed(4),
 				"available_qty": offer.AvailableQty,
 				"is_active":     offer.IsActive,
@@ -235,4 +312,28 @@ func (s *Service) Update(ctx context.Context, wholesalerID, offerID uuid.UUID, i
 	}
 
 	return &offer, nil
+}
+
+func trimOptional(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
+}
+
+func errorAs(err error, target *appErr.AppError) bool {
+	switch v := err.(type) {
+	case appErr.AppError:
+		*target = v
+		return true
+	case *appErr.AppError:
+		*target = *v
+		return true
+	default:
+		return false
+	}
 }

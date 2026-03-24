@@ -116,6 +116,35 @@ const (
 	MedicineCandidateStatusRejected MedicineCandidateStatus = "REJECTED"
 )
 
+type NotificationKind string
+
+const (
+	NotificationKindOrderCreated               NotificationKind = "ORDER_CREATED"
+	NotificationKindOrderStatusChanged         NotificationKind = "ORDER_STATUS_CHANGED"
+	NotificationKindPaymentUpdated             NotificationKind = "PAYMENT_UPDATED"
+	NotificationKindAccessUpdated              NotificationKind = "ACCESS_UPDATED"
+	NotificationKindRareBidReceived            NotificationKind = "RARE_BID_RECEIVED"
+	NotificationKindRareBidSelected            NotificationKind = "RARE_BID_SELECTED"
+	NotificationKindManufacturerRequestCreated NotificationKind = "MANUFACTURER_REQUEST_CREATED"
+	NotificationKindManufacturerQuoteCreated   NotificationKind = "MANUFACTURER_QUOTE_CREATED"
+)
+
+type NotificationDevicePlatform string
+
+const (
+	NotificationDevicePlatformAndroid NotificationDevicePlatform = "ANDROID"
+	NotificationDevicePlatformWeb     NotificationDevicePlatform = "WEB"
+)
+
+type NotificationDeliveryStatus string
+
+const (
+	NotificationDeliveryStatusPending NotificationDeliveryStatus = "PENDING"
+	NotificationDeliveryStatusSent    NotificationDeliveryStatus = "SENT"
+	NotificationDeliveryStatusFailed  NotificationDeliveryStatus = "FAILED"
+	NotificationDeliveryStatusSkipped NotificationDeliveryStatus = "SKIPPED"
+)
+
 type User struct {
 	ID           uuid.UUID  `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
 	Email        *string    `gorm:"type:text;uniqueIndex"`
@@ -200,16 +229,15 @@ func (MedicineCandidate) TableName() string { return "medicine_candidates" }
 
 type WholesalerOffer struct {
 	ID           uuid.UUID       `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
-	WholesalerID uuid.UUID       `gorm:"type:uuid;not null;index:uq_wholesaler_medicine_active_offer,priority:1,unique"`
-	MedicineID   uuid.UUID       `gorm:"type:uuid;not null;index:uq_wholesaler_medicine_active_offer,priority:2,unique;index:idx_offers_med_active_updated,priority:1"`
+	WholesalerID uuid.UUID       `gorm:"type:uuid;not null;index:idx_offers_wh_active,priority:1"`
+	Name         string          `gorm:"type:text;not null"`
+	Producer     *string         `gorm:"type:text"`
 	DisplayPrice decimal.Decimal `gorm:"type:numeric(18,4);not null"`
-	Currency     string          `gorm:"type:text;not null"`
 	AvailableQty int             `gorm:"type:int;not null;default:0"`
-	MinOrderQty  int             `gorm:"type:int;not null;default:1" json:"-"`
 	ExpiryDate   *time.Time      `gorm:"type:date"`
-	IsActive     bool            `gorm:"type:boolean;not null;default:true;index:uq_wholesaler_medicine_active_offer,priority:3,unique;index:idx_offers_med_active_updated,priority:2;index:idx_offers_wh_active,priority:2"`
+	IsActive     bool            `gorm:"type:boolean;not null;default:true;index:idx_offers_wh_active,priority:2"`
 	CreatedAt    time.Time       `gorm:"type:timestamptz;not null;default:now()"`
-	UpdatedAt    time.Time       `gorm:"type:timestamptz;not null;default:now();index:idx_offers_med_active_updated,priority:3;sort:desc"`
+	UpdatedAt    time.Time       `gorm:"type:timestamptz;not null;default:now();index:idx_offers_name_updated,priority:2;sort:desc"`
 }
 
 func (WholesalerOffer) TableName() string { return "wholesaler_offers" }
@@ -228,12 +256,14 @@ type Order struct {
 func (Order) TableName() string { return "orders" }
 
 type OrderItem struct {
-	ID         uuid.UUID       `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
-	OrderID    uuid.UUID       `gorm:"type:uuid;not null;index"`
-	MedicineID uuid.UUID       `gorm:"type:uuid;not null;index"`
-	Qty        int             `gorm:"type:int;not null"`
-	UnitPrice  decimal.Decimal `gorm:"type:numeric(18,4);not null"`
-	LineTotal  decimal.Decimal `gorm:"type:numeric(18,4);not null"`
+	ID        uuid.UUID       `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
+	OrderID   uuid.UUID       `gorm:"type:uuid;not null;index"`
+	OfferID   uuid.UUID       `gorm:"type:uuid;not null;index"`
+	ItemName  string          `gorm:"type:text;not null"`
+	Producer  *string         `gorm:"type:text"`
+	Qty       int             `gorm:"type:int;not null"`
+	UnitPrice decimal.Decimal `gorm:"type:numeric(18,4);not null"`
+	LineTotal decimal.Decimal `gorm:"type:numeric(18,4);not null"`
 }
 
 func (OrderItem) TableName() string { return "order_items" }
@@ -241,7 +271,6 @@ func (OrderItem) TableName() string { return "order_items" }
 type RareRequest struct {
 	ID                uuid.UUID         `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
 	PharmacyID        uuid.UUID         `gorm:"type:uuid;not null"`
-	MedicineID        *uuid.UUID        `gorm:"type:uuid"`
 	RequestedNameText *string           `gorm:"type:text"`
 	Qty               int               `gorm:"type:int;not null"`
 	DeadlineAt        time.Time         `gorm:"type:timestamptz;not null;index:idx_rare_requests_status_deadline,priority:2"`
@@ -273,7 +302,6 @@ type ManufacturerRequest struct {
 	ID                uuid.UUID                 `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
 	WholesalerID      uuid.UUID                 `gorm:"type:uuid;not null;index:idx_mr_wholesaler_status,priority:1"`
 	ManufacturerID    uuid.UUID                 `gorm:"type:uuid;not null;index:idx_mr_manufacturer_status_created,priority:1"`
-	MedicineID        *uuid.UUID                `gorm:"type:uuid"`
 	RequestedNameText *string                   `gorm:"type:text"`
 	Qty               int                       `gorm:"type:int;not null"`
 	NeededBy          *time.Time                `gorm:"type:timestamptz"`
@@ -312,7 +340,7 @@ func (DiscountCampaign) TableName() string { return "discount_campaigns" }
 type DiscountItem struct {
 	ID            uuid.UUID       `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
 	CampaignID    uuid.UUID       `gorm:"type:uuid;not null"`
-	MedicineID    uuid.UUID       `gorm:"type:uuid;not null"`
+	OfferID       uuid.UUID       `gorm:"type:uuid;not null"`
 	DiscountType  DiscountType    `gorm:"type:discount_type;not null"`
 	DiscountValue decimal.Decimal `gorm:"type:numeric(18,4);not null"`
 }
@@ -353,13 +381,73 @@ func (Outbox) TableName() string { return "outbox" }
 
 type InventoryMovement struct {
 	ID           uuid.UUID             `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
-	WholesalerID uuid.UUID             `gorm:"type:uuid;not null;index:idx_inventory_wh_medicine_created,priority:1"`
-	MedicineID   uuid.UUID             `gorm:"type:uuid;not null;index:idx_inventory_wh_medicine_created,priority:2"`
+	WholesalerID uuid.UUID             `gorm:"type:uuid;not null;index:idx_inventory_wh_offer_created,priority:1"`
+	OfferID      uuid.UUID             `gorm:"type:uuid;not null;index:idx_inventory_wh_offer_created,priority:2"`
 	Type         InventoryMovementType `gorm:"type:inventory_movement_type;not null"`
 	Qty          int                   `gorm:"type:int;not null"`
 	RefType      *string               `gorm:"type:text"`
 	RefID        *uuid.UUID            `gorm:"type:uuid"`
-	CreatedAt    time.Time             `gorm:"type:timestamptz;not null;default:now();index:idx_inventory_wh_medicine_created,priority:3;sort:desc"`
+	CreatedAt    time.Time             `gorm:"type:timestamptz;not null;default:now();index:idx_inventory_wh_offer_created,priority:3;sort:desc"`
 }
 
 func (InventoryMovement) TableName() string { return "inventory_movements" }
+
+type NotificationPreference struct {
+	UserID                     uuid.UUID `gorm:"type:uuid;primaryKey"`
+	InAppEnabled               bool      `gorm:"type:boolean;not null;default:true"`
+	PushEnabled                bool      `gorm:"type:boolean;not null;default:true"`
+	OrderCreated               bool      `gorm:"type:boolean;not null;default:true"`
+	OrderStatusChanged         bool      `gorm:"type:boolean;not null;default:true"`
+	PaymentUpdated             bool      `gorm:"type:boolean;not null;default:true"`
+	AccessUpdated              bool      `gorm:"type:boolean;not null;default:true"`
+	RareBidReceived            bool      `gorm:"type:boolean;not null;default:true"`
+	RareBidSelected            bool      `gorm:"type:boolean;not null;default:true"`
+	ManufacturerRequestCreated bool      `gorm:"type:boolean;not null;default:true"`
+	ManufacturerQuoteCreated   bool      `gorm:"type:boolean;not null;default:true"`
+	CreatedAt                  time.Time `gorm:"type:timestamptz;not null;default:now()"`
+	UpdatedAt                  time.Time `gorm:"type:timestamptz;not null;default:now()"`
+}
+
+func (NotificationPreference) TableName() string { return "notification_preferences" }
+
+type NotificationDevice struct {
+	ID          uuid.UUID                  `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
+	UserID      uuid.UUID                  `gorm:"type:uuid;not null;index:idx_notification_devices_user_active,priority:1"`
+	Platform    NotificationDevicePlatform `gorm:"type:notification_device_platform;not null"`
+	Token       string                     `gorm:"type:text;not null;uniqueIndex"`
+	DeviceLabel *string                    `gorm:"type:text"`
+	IsActive    bool                       `gorm:"type:boolean;not null;default:true;index:idx_notification_devices_user_active,priority:2"`
+	LastSeenAt  time.Time                  `gorm:"type:timestamptz;not null;default:now()"`
+	CreatedAt   time.Time                  `gorm:"type:timestamptz;not null;default:now()"`
+	UpdatedAt   time.Time                  `gorm:"type:timestamptz;not null;default:now()"`
+}
+
+func (NotificationDevice) TableName() string { return "notification_devices" }
+
+type Notification struct {
+	ID          uuid.UUID        `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
+	UserID      uuid.UUID        `gorm:"type:uuid;not null;index:idx_notifications_user_created,priority:1;index:idx_notifications_user_unread_created,priority:1"`
+	Kind        NotificationKind `gorm:"type:notification_kind;not null"`
+	Title       string           `gorm:"type:text;not null"`
+	Body        string           `gorm:"type:text;not null"`
+	PayloadJSON []byte           `gorm:"type:jsonb;not null"`
+	DedupeKey   *string          `gorm:"type:text;uniqueIndex"`
+	IsRead      bool             `gorm:"type:boolean;not null;default:false;index:idx_notifications_user_unread_created,priority:2"`
+	ReadAt      *time.Time       `gorm:"type:timestamptz"`
+	CreatedAt   time.Time        `gorm:"type:timestamptz;not null;default:now();index:idx_notifications_user_created,priority:2;sort:desc;index:idx_notifications_user_unread_created,priority:3;sort:desc"`
+}
+
+func (Notification) TableName() string { return "notifications" }
+
+type NotificationDelivery struct {
+	ID             uuid.UUID                  `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
+	NotificationID uuid.UUID                  `gorm:"type:uuid;not null;index:idx_notification_deliveries_notification_status,priority:1"`
+	DeviceID       uuid.UUID                  `gorm:"type:uuid;not null"`
+	Platform       NotificationDevicePlatform `gorm:"type:notification_device_platform;not null"`
+	Status         NotificationDeliveryStatus `gorm:"type:notification_delivery_status;not null;default:PENDING;index:idx_notification_deliveries_notification_status,priority:2"`
+	ErrorText      *string                    `gorm:"type:text"`
+	CreatedAt      time.Time                  `gorm:"type:timestamptz;not null;default:now()"`
+	DeliveredAt    *time.Time                 `gorm:"type:timestamptz"`
+}
+
+func (NotificationDelivery) TableName() string { return "notification_deliveries" }

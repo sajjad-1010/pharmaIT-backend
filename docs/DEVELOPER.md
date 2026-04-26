@@ -15,7 +15,6 @@ internal/
     users/
     catalog/
     offers/
-    inventory/
     orders/
     rare/
     manufacturer/
@@ -112,15 +111,12 @@ Webhook signature transport:
 
 ## 3) Core Workflows
 
-### Order + Stock Reservation
+### Order Creation
 1. Pharmacy creates order.
 2. API starts DB transaction.
-3. Offer rows are locked with `SELECT ... FOR UPDATE`.
-4. Available stock is computed from `inventory_movements` by `offer_id`.
-5. Reservation movement (`RESERVED`) is inserted.
-6. `wholesaler_offers.available_qty` cache field is updated.
-7. `orders` + `order_items` persisted.
-8. Outbox events written and `NOTIFY outbox_new` sent.
+3. Offer row is checked for existence and ownership.
+4. `orders` + `order_items` persisted.
+5. Outbox events written and `NOTIFY outbox_new` sent.
 
 Order response note:
 - order list/detail responses include pharmacy profile fields resolved from `pharmacies` + `users`:
@@ -140,9 +136,7 @@ Order response note:
 - wholesaler clients should display these fields when present instead of deriving labels from `PharmacyID`.
 
 Offer contract note:
-- `wholesaler_offers.available_qty` is a denormalized cache field populated from `inventory_movements`.
-- The public `/offers` API no longer accepts direct stock changes.
-- Stock must change only through inventory movement endpoints/services.
+- Offer list cache is invalidated in API write paths and also by worker outbox processing.
 - Search is performed by `name`, not by `medicine_id`.
 
 ### Payment + Access Pass
@@ -163,7 +157,7 @@ Offer contract note:
 ### SSE
 1. Client opens `GET /api/v1/stream/offers`.
 2. API subscribes to Redis channel (`sse_offers`) and forwards to in-memory broker.
-3. Worker publishes `offer.updated`, `inventory.changed`, and `order.status_changed` events to Redis pubsub from outbox processor.
+3. Worker publishes `offer.updated` and `order.status_changed` events to Redis pubsub from outbox processor.
 
 ### Notification Foundation
 1. API stores user-level notification preferences in `notification_preferences`.
@@ -196,6 +190,7 @@ Notification push config:
 2. Backend can receive:
    - a single offer payload via `POST /api/v1/offers`
    - or many rows via `POST /api/v1/offers/batch`
+   - wholesaler-scoped paginated reads via `GET /api/v1/offers/mine`
 3. Required fields are validated:
    - `name`
    - `display_price`
@@ -279,7 +274,6 @@ erDiagram
     uuid wholesaler_id FK
     uuid medicine_id FK
     decimal display_price
-    int available_qty
     date expiry_date
     boolean is_active
     datetime updated_at
@@ -320,7 +314,6 @@ erDiagram
     uuid rare_request_id FK
     uuid wholesaler_id FK
     decimal price
-    int available_qty
     int delivery_eta_hours
     string notes
     string status
@@ -437,8 +430,8 @@ erDiagram
   USERS ||--o{ PAYMENTS : "pays"
   USERS ||--|| ACCESS_PASSES : "has_access"
 
-  WHOLESALERS ||--o{ INVENTORY_MOVEMENTS : "moves"
-  MEDICINES ||--o{ INVENTORY_MOVEMENTS : "movement_for"
 ```
+
+
 
 

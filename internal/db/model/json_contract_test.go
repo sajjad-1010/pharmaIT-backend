@@ -16,7 +16,6 @@ func TestWholesalerOfferJSONOmitsInternalFields(t *testing.T) {
 		WholesalerID: uuid.New(),
 		Name:         "Test product 500mg #20",
 		DisplayPrice: decimal.RequireFromString("10.5000"),
-		AvailableQty: 12,
 		ExpiryDate:   ptrTime(time.Date(2027, 9, 15, 0, 0, 0, 0, time.UTC)),
 		IsActive:     true,
 		CreatedAt:    time.Now().UTC(),

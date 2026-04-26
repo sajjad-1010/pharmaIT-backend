@@ -88,8 +88,6 @@ definitions:
     - UserRoleAdmin
   model.WholesalerOffer:
     properties:
-      availableQty:
-        type: integer
       createdAt:
         type: string
       displayPrice:
@@ -496,67 +494,6 @@ paths:
       summary: Register new user
       tags:
       - auth
-  /inventory/movements:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: movement payload
-        in: body
-        name: request
-        required: true
-        schema:
-          type: object
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Add inventory movement (Wholesaler)
-      tags:
-      - inventory
-  /inventory/stock:
-    get:
-      parameters:
-      - description: offer id
-        in: query
-        name: offer_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Get current stock by offer (Wholesaler)
-      tags:
-      - inventory
   /notifications/:
     get:
       parameters:
@@ -909,6 +846,42 @@ paths:
       summary: Create offers in batch (Wholesaler)
       tags:
       - offers
+  /offers/mine:
+    get:
+      parameters:
+      - description: offer name query
+        in: query
+        name: query
+        type: string
+      - description: limit
+        in: query
+        name: limit
+        type: integer
+      - description: cursor
+        in: query
+        name: cursor
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: List current wholesaler offers
+      tags:
+      - offers
   /orders/:
     get:
       parameters:
@@ -1121,6 +1094,151 @@ paths:
       summary: Payment webhook callback
       tags:
       - payments
+  /rare-requests:
+    get:
+      parameters:
+      - description: status
+        in: query
+        name: status
+        type: string
+      - description: limit
+        in: query
+        name: limit
+        type: integer
+      - description: cursor
+        in: query
+        name: cursor
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: List rare requests
+      tags:
+      - rare
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: rare request payload
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Create rare request (Pharmacy)
+      tags:
+      - rare
+  /rare-requests/{id}/bids:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: rare request id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: rare bid payload
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Create rare bid (Wholesaler)
+      tags:
+      - rare
+  /rare-requests/bids/{id}/select:
+    post:
+      parameters:
+      - description: rare bid id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Select rare bid (Pharmacy)
+      tags:
+      - rare
   /stream/offers:
     get:
       produces:
@@ -1130,7 +1248,7 @@ paths:
           description: SSE stream
           schema:
             type: string
-      summary: SSE stream for offer, inventory, and order status updates
+      summary: SSE stream for offer and order status updates
       tags:
       - stream
 schemes:

@@ -27,12 +27,10 @@ Meaning:
 
 ### Not part of public offer input anymore
 - `currency`
-- `available_qty`
 - `min_order_qty`
 - `delivery_eta_hours`
 
 Notes:
-- stock is managed only through inventory endpoints
 - search is performed only on `name`
 
 ## 3) Offer API
@@ -56,7 +54,6 @@ Response:
       "Name": "L-тироксин 50 Б/Хеми тб 50мкг №50",
       "Producer": "Берлин Хеми",
       "DisplayPrice": "12.8000",
-      "AvailableQty": 50,
       "ExpiryDate": "2028-02-01T00:00:00Z",
       "IsActive": true,
       "CreatedAt": "2026-03-23T10:00:00Z",
@@ -72,6 +69,20 @@ Frontend rules:
 - use `query` for search
 - show the exact backend `name`
 - do not try to split `name` into dose/form/count unless UI really needs parsing
+
+### List current wholesaler offers
+- `GET /api/v1/offers/mine?query=&limit=&cursor=`
+- auth required
+- role: `WHOLESALER`
+
+Use this endpoint in wholesaler dashboards/panels so the app does not fetch every offer in the system.
+
+Query params:
+- `query`: optional text search on `name`
+- `limit`: optional, default `20`, max `100`
+- `cursor`: optional, `base64(timestamp|id)`
+
+Response shape is the same as public `/offers`.
 
 ### Create offer
 - `POST /api/v1/offers`
@@ -105,8 +116,7 @@ Patch body:
 ```
 
 Important:
-- stock is not updated from offer create/update
-- frontend must not send `available_qty` in offer create/update
+- frontend must not send stock-related fields in offer create/update
 
 ### Batch create offers
 - `POST /api/v1/offers/batch`
@@ -192,59 +202,13 @@ Frontend guidance:
 - send the exact user query to `query`
 - backend handles substring/fuzzy matching
 
-## 5) Inventory / Stock
+## 5) Stock
+Stock was removed from the active backend flow.
 
-Stock is managed separately from offers.
-
-### Add inventory movement
-- `POST /api/v1/inventory/movements`
-- auth required
-- role: `WHOLESALER`
-
-Request:
-```json
-{
-  "offer_id": "OFFER_UUID",
-  "type": "IN",
-  "qty": 50,
-  "ref_type": "manual_adjust"
-}
-```
-
-Allowed movement types:
-- `IN`
-- `OUT`
-- `RESERVED`
-- `RELEASED`
-- `ADJUST`
-
-Response:
-```json
-{
-  "movement": {
-    "ID": "MOVEMENT_UUID"
-  },
-  "available_qty": 50
-}
-```
-
-### Get current stock
-- `GET /api/v1/inventory/stock?offer_id=<OFFER_ID>`
-- auth required
-- role: `WHOLESALER`
-
-Response:
-```json
-{
-  "wholesaler_id": "WHOLESALER_UUID",
-  "offer_id": "OFFER_UUID",
-  "available_qty": 50
-}
-```
-
-Frontend rule:
-- treat `available_qty` from backend as the source shown in UI
-- do not maintain your own stock math in the client
+Frontend rules:
+- there are no active inventory endpoints in runtime
+- do not show stock as a backend-guaranteed field
+- order creation no longer performs backend stock validation
 
 ## 6) Orders
 
@@ -330,6 +294,50 @@ Allowed statuses:
 - `DELIVERED`
 - `CANCELED`
 
+
+## 6.1) Rare Requests
+
+Rare request routes are active in runtime.
+
+### Create rare request
+- `POST /api/v1/rare-requests`
+- auth required
+- role: `PHARMACY`
+
+Request:
+```json
+{
+  "requested_name_text": "????? ?????? ????????",
+  "qty": 3,
+  "deadline_at": "2026-03-27T12:00:00Z",
+  "notes": "urgent"
+}
+```
+
+### List rare requests
+- `GET /api/v1/rare-requests?status=&limit=&cursor=`
+- auth required
+
+### Create rare bid
+- `POST /api/v1/rare-requests/:id/bids`
+- auth required
+- role: `WHOLESALER`
+
+Request:
+```json
+{
+  "price": "12.0000",
+  "currency": "TJS",
+  "available_qty": 20,
+  "delivery_eta_hours": 18,
+  "notes": "available"
+}
+```
+
+### Select rare bid
+- `POST /api/v1/rare-requests/bids/:id/select`
+- auth required
+- role: `PHARMACY`
 ## 7) Notifications
 
 ### In-app notifications
@@ -364,11 +372,9 @@ Current product decision:
 
 Current realtime event types:
 - `offer.updated`
-- `inventory.changed`
 - `order.status_changed`
 
 Use SSE for:
-- live stock refresh
 - live order-status refresh
 - live offer changes while the app is open
 
@@ -387,23 +393,8 @@ All backend errors:
 }
 ```
 
-Important conflict example:
-```json
-{
-  "error": {
-    "code": "INSUFFICIENT_STOCK",
-    "message": "not enough stock",
-    "details": {
-      "available": 3,
-      "requested": 5
-    }
-  }
-}
-```
-
 Frontend rule:
 - show `message`
-- when `details.available` and `details.requested` exist, use them in UX
 
 ## 10) Frontend Checklist
 
@@ -416,7 +407,6 @@ Frontend rule:
 
 ### Wholesaler
 - create/update offers with `name` and `display_price`
-- update stock only through inventory endpoints
 - read pharmacy identity/contact fields from order responses
 - use notifications + SSE
 
@@ -427,3 +417,4 @@ Frontend rule:
 ### Android
 - register FCM token through `/notifications/devices`
 - use in-app feed plus push
+

@@ -63,8 +63,6 @@ curl -X POST http://localhost/api/v1/offers \
 ```
 
 Offer contract note:
-- `available_qty` is not accepted by the public offer API anymore.
-- Stock changes must go through `POST /api/v1/inventory/movements`.
 - `delivery_eta_hours` was removed from regular offers. Keep ETA only in rare bid submissions.
 - Search is performed by `name`.
 
@@ -102,28 +100,13 @@ Batch response note:
 curl "http://localhost/api/v1/offers?query=тироксин&limit=20&cursor=<CURSOR>"
 ```
 
-## 3) Inventory
-
-### Add Movement
+### List Current Wholesaler Offers (Cursor)
 ```bash
-curl -X POST http://localhost/api/v1/inventory/movements \
-  -H "Authorization: Bearer <WHOLESALER_ACCESS_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "offer_id":"<OFFER_ID>",
-    "type":"IN",
-    "qty":500,
-    "ref_type":"manual_adjust"
-  }'
-```
-
-### Get Stock
-```bash
-curl "http://localhost/api/v1/inventory/stock?offer_id=<OFFER_ID>" \
+curl "http://localhost/api/v1/offers/mine?query=тироксин&limit=20&cursor=<CURSOR>" \
   -H "Authorization: Bearer <WHOLESALER_ACCESS_TOKEN>"
 ```
 
-## 4) Orders
+## 3) Orders
 
 ### Create Order (Pharmacy)
 ```bash
@@ -256,7 +239,6 @@ curl -N http://localhost/api/v1/stream/offers
 ```
 Expected events:
 - `offer.updated`
-- `inventory.changed`
 - `order.status_changed`
 
 ## 10) Notifications
@@ -331,7 +313,7 @@ Notification foundation note:
 2. Call `/auth/me` and route UI by role.
 3. Test cursor pagination on `/medicines`, `/offers`, `/orders`.
 4. Open SSE stream and verify live updates on offer/stock/order-status changes.
-5. Create order and check stock reduction.
+5. Create order and verify item snapshots/status updates.
 6. Register device token and verify notifications list updates after events.
 7. Run payment flow and confirm access extension.
 8. Verify standard backend error format handling in UI.

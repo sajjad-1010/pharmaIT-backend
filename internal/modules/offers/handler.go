@@ -24,6 +24,7 @@ func (h *Handler) RegisterRoutes(api fiber.Router, authMW fiber.Handler, wholesa
 	api.Get("/offers", h.list)
 
 	protected := api.Group("/offers", authMW, wholesalerOnly)
+	protected.Get("/mine", h.listMine)
 	protected.Post("/batch", h.createBatch)
 	protected.Post("/", h.create)
 	protected.Patch("/:id", h.update)
@@ -58,6 +59,55 @@ func (h *Handler) list(c *fiber.Ctx) error {
 		Query:  strings.TrimSpace(c.Query("query")),
 		Limit:  limit,
 		Cursor: cursor,
+	})
+	if err != nil {
+		return response.Fail(c, err)
+	}
+	return response.JSON(c, fiber.StatusOK, result)
+}
+
+// listMine godoc
+// @Summary List current wholesaler offers
+// @Tags offers
+// @Security BearerAuth
+// @Produce json
+// @Param query query string false "offer name query"
+// @Param limit query int false "limit"
+// @Param cursor query string false "cursor"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} response.ErrorEnvelope
+// @Failure 401 {object} response.ErrorEnvelope
+// @Router /offers/mine [get]
+func (h *Handler) listMine(c *fiber.Ctx) error {
+	userID, err := middleware.MustCurrentUserID(c)
+	if err != nil {
+		return response.Fail(c, appErr.Unauthorized("UNAUTHORIZED", "missing auth context"))
+	}
+
+	wholesalerID, err := uuid.Parse(userID)
+	if err != nil {
+		return response.Fail(c, appErr.Unauthorized("UNAUTHORIZED", "invalid auth user id"))
+	}
+
+	limit, err := middleware.ParseLimit(c, 20, 100)
+	if err != nil {
+		return response.Fail(c, appErr.BadRequest("INVALID_LIMIT", "invalid limit", nil))
+	}
+
+	var cursor *pagination.Cursor
+	if raw := strings.TrimSpace(c.Query("cursor")); raw != "" {
+		cur, err := pagination.Decode(raw)
+		if err != nil {
+			return response.Fail(c, appErr.BadRequest("INVALID_CURSOR", "cursor is invalid", nil))
+		}
+		cursor = &cur
+	}
+
+	result, err := h.svc.List(c.UserContext(), ListInput{
+		Query:        strings.TrimSpace(c.Query("query")),
+		WholesalerID: &wholesalerID,
+		Limit:        limit,
+		Cursor:       cursor,
 	})
 	if err != nil {
 		return response.Fail(c, err)

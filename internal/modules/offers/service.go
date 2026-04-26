@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"pharmalink/server/internal/cacheutil"
 	appErr "pharmalink/server/internal/common/errors"
 	"pharmalink/server/internal/db/model"
 	"pharmalink/server/internal/http/pagination"
@@ -33,14 +34,15 @@ func NewService(db *gorm.DB, redis *redis.Client, outboxSvc *outbox.Service) *Se
 }
 
 type ListInput struct {
-	Query  string
-	Limit  int
-	Cursor *pagination.Cursor
+	Query        string
+	WholesalerID *uuid.UUID
+	Limit        int
+	Cursor       *pagination.Cursor
 }
 
 func (s *Service) List(ctx context.Context, input ListInput) (pagination.Result[model.WholesalerOffer], error) {
 	query := strings.TrimSpace(input.Query)
-	cacheKey := fmt.Sprintf("offers:query=%s:limit=%d:cursor=%v", strings.ToLower(query), input.Limit, input.Cursor)
+	cacheKey := fmt.Sprintf("offers:query=%s:wholesaler=%v:limit=%d:cursor=%v", strings.ToLower(query), input.WholesalerID, input.Limit, input.Cursor)
 	if s.redis != nil {
 		if cached, err := s.redis.Get(ctx, cacheKey).Result(); err == nil {
 			var out pagination.Result[model.WholesalerOffer]
@@ -51,6 +53,9 @@ func (s *Service) List(ctx context.Context, input ListInput) (pagination.Result[
 	}
 
 	q := s.db.WithContext(ctx).Model(&model.WholesalerOffer{}).Where("is_active = TRUE")
+	if input.WholesalerID != nil {
+		q = q.Where("wholesaler_id = ?", *input.WholesalerID)
+	}
 	if query != "" {
 		like := "%" + query + "%"
 		q = q.Where("name ILIKE ? OR similarity(name, ?) > 0.15", like, query)
@@ -121,7 +126,6 @@ func (s *Service) buildOffer(wholesalerID uuid.UUID, input UpsertOfferInput) (*m
 		Name:         name,
 		Producer:     trimOptional(input.Producer),
 		DisplayPrice: price,
-		AvailableQty: 0,
 		IsActive:     true,
 	}
 	if input.IsActive != nil {
@@ -156,7 +160,6 @@ func (s *Service) Create(ctx context.Context, wholesalerID uuid.UUID, input Upse
 				"name":          offer.Name,
 				"producer":      offer.Producer,
 				"display_price": offer.DisplayPrice.StringFixed(4),
-				"available_qty": offer.AvailableQty,
 				"is_active":     offer.IsActive,
 			},
 		})
@@ -167,6 +170,7 @@ func (s *Service) Create(ctx context.Context, wholesalerID uuid.UUID, input Upse
 	}); err != nil {
 		return nil, err
 	}
+	_ = cacheutil.InvalidateByPrefix(ctx, s.redis, "offers:")
 
 	return offer, nil
 }
@@ -213,7 +217,6 @@ func (s *Service) CreateBatch(ctx context.Context, wholesalerID uuid.UUID, input
 					"name":          offer.Name,
 					"producer":      offer.Producer,
 					"display_price": offer.DisplayPrice.StringFixed(4),
-					"available_qty": offer.AvailableQty,
 					"is_active":     offer.IsActive,
 				},
 			})
@@ -233,6 +236,7 @@ func (s *Service) CreateBatch(ctx context.Context, wholesalerID uuid.UUID, input
 
 	result.CreatedCount = len(result.Items)
 	result.FailedCount = len(result.Errors)
+	_ = cacheutil.InvalidateByPrefix(ctx, s.redis, "offers:")
 	return result, nil
 }
 
@@ -298,7 +302,6 @@ func (s *Service) Update(ctx context.Context, wholesalerID, offerID uuid.UUID, i
 				"name":          offer.Name,
 				"producer":      offer.Producer,
 				"display_price": offer.DisplayPrice.StringFixed(4),
-				"available_qty": offer.AvailableQty,
 				"is_active":     offer.IsActive,
 			},
 		})
@@ -310,6 +313,7 @@ func (s *Service) Update(ctx context.Context, wholesalerID, offerID uuid.UUID, i
 	}); err != nil {
 		return nil, err
 	}
+	_ = cacheutil.InvalidateByPrefix(ctx, s.redis, "offers:")
 
 	return &offer, nil
 }

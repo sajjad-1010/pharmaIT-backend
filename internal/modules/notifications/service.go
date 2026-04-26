@@ -265,6 +265,8 @@ func (s *Service) HandleEvent(ctx context.Context, eventType string, payload map
 		return s.handleSingleUserEvent(ctx, payload, extractUUID(payload, "manufacturer_id"), model.NotificationKindManufacturerRequestCreated, "New manufacturer request", "A wholesaler sent a new manufacturer request.", buildDedupeKey("manufacturer.request_created", extractUUID(payload, "manufacturer_id"), firstString(payload["request_id"])))
 	case "manufacturer.quote_created":
 		return s.handleManufacturerQuoteCreated(ctx, payload)
+	case "campaign.join_requested":
+		return s.handleCampaignJoinRequested(ctx, payload)
 	default:
 		return nil
 	}
@@ -297,6 +299,22 @@ func (s *Service) handleRareBidCreated(ctx context.Context, payload map[string]i
 		return appErr.Internal("failed to resolve rare request recipient")
 	}
 	return s.createNotificationForUser(ctx, req.PharmacyID, model.NotificationKindRareBidReceived, "New rare bid received", "A wholesaler submitted a bid for your rare request.", payload, buildDedupeKey("rare.bid_received", req.PharmacyID, firstString(payload["rare_bid_id"]), requestID.String()))
+}
+
+func (s *Service) handleCampaignJoinRequested(ctx context.Context, payload map[string]interface{}) error {
+	wholesalerID := extractUUID(payload, "wholesaler_id")
+	if wholesalerID == uuid.Nil {
+		return appErr.Internal("campaign join request notification is missing wholesaler_id")
+	}
+	requestID := firstString(payload["request_id"])
+	campaignID := firstString(payload["campaign_id"])
+	pharmacyID := firstString(payload["pharmacy_id"])
+	return s.createNotificationForUser(ctx, wholesalerID, model.NotificationKindCampaignJoinRequest,
+		"New campaign join request",
+		"A pharmacy wants to join your discount campaign.",
+		payload,
+		buildDedupeKey("campaign.join_requested", wholesalerID, campaignID, pharmacyID, requestID),
+	)
 }
 
 func (s *Service) handleManufacturerQuoteCreated(ctx context.Context, payload map[string]interface{}) error {
@@ -529,6 +547,8 @@ func kindPushEnabled(pref *model.NotificationPreference, kind model.Notification
 		return pref.ManufacturerRequestCreated
 	case model.NotificationKindManufacturerQuoteCreated:
 		return pref.ManufacturerQuoteCreated
+	case model.NotificationKindCampaignJoinRequest:
+		return true
 	default:
 		return true
 	}

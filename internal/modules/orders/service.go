@@ -8,26 +8,22 @@ import (
 	appErr "pharmalink/server/internal/common/errors"
 	"pharmalink/server/internal/db/model"
 	"pharmalink/server/internal/http/pagination"
-	"pharmalink/server/internal/modules/inventory"
 	"pharmalink/server/internal/modules/outbox"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type Service struct {
-	db           *gorm.DB
-	inventorySvc *inventory.Service
-	outboxSvc    *outbox.Service
+	db        *gorm.DB
+	outboxSvc *outbox.Service
 }
 
-func NewService(db *gorm.DB, inventorySvc *inventory.Service, outboxSvc *outbox.Service) *Service {
+func NewService(db *gorm.DB, outboxSvc *outbox.Service) *Service {
 	return &Service{
-		db:           db,
-		inventorySvc: inventorySvc,
-		outboxSvc:    outboxSvc,
+		db:        db,
+		outboxSvc: outboxSvc,
 	}
 }
 
@@ -100,23 +96,11 @@ func (s *Service) CreateOrder(ctx context.Context, input CreateOrderInput) (*Ord
 			}
 
 			var offer model.WholesalerOffer
-			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-				First(&offer, "id = ? AND wholesaler_id = ? AND is_active = TRUE", item.OfferID, input.WholesalerID).Error; err != nil {
+			if err := tx.First(&offer, "id = ? AND wholesaler_id = ? AND is_active = TRUE", item.OfferID, input.WholesalerID).Error; err != nil {
 				if err == gorm.ErrRecordNotFound {
 					return appErr.NotFound("OFFER_NOT_FOUND", "offer not found for wholesaler")
 				}
-				return appErr.Internal("failed to lock offer")
-			}
-
-			available, err := s.inventorySvc.CurrentAvailable(ctx, tx, offer.WholesalerID, offer.ID)
-			if err != nil {
-				return err
-			}
-			if available < item.Qty {
-				return appErr.Conflict("INSUFFICIENT_STOCK", "not enough stock", map[string]int{
-					"available": available,
-					"requested": item.Qty,
-				})
+				return appErr.Internal("failed to query offer")
 			}
 
 			lineTotal := offer.DisplayPrice.Mul(decimal.NewFromInt(int64(item.Qty)))
@@ -134,43 +118,7 @@ func (s *Service) CreateOrder(ctx context.Context, input CreateOrderInput) (*Ord
 				return appErr.Internal("failed to create order item")
 			}
 
-			refType := "order"
-			refID := order.ID
-			if _, err := s.inventorySvc.AddMovement(ctx, tx, inventory.MovementInput{
-				WholesalerID: offer.WholesalerID,
-				OfferID:      offer.ID,
-				Type:         model.InventoryMovementTypeReserved,
-				Qty:          item.Qty,
-				RefType:      &refType,
-				RefID:        &refID,
-			}); err != nil {
-				return err
-			}
-
-			if err := tx.Model(&model.WholesalerOffer{}).
-				Where("id = ?", offer.ID).
-				Update("available_qty", available-item.Qty).Error; err != nil {
-				return appErr.Internal("failed to update offer available qty")
-			}
-
 			total = total.Add(lineTotal)
-
-			outInv, err := s.outboxSvc.Write(ctx, tx, outbox.Event{
-				Type: "inventory.changed",
-				Payload: map[string]interface{}{
-					"offer_id":      offer.ID,
-					"wholesaler_id": offer.WholesalerID,
-					"name":          offer.Name,
-					"available_qty": available - item.Qty,
-					"order_id":      order.ID,
-				},
-			})
-			if err != nil {
-				return err
-			}
-			if err := s.outboxSvc.Notify(ctx, tx, outInv.ID); err != nil {
-				return fmt.Errorf("notify inventory event: %w", err)
-			}
 		}
 
 		if err := tx.Model(&model.Order{}).

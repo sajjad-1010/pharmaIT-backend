@@ -98,9 +98,6 @@ func (p *OutboxProcessor) handleEvent(ctx context.Context, eventType string, pay
 	case "offer.updated":
 		p.invalidateByPrefix(ctx, "offers:")
 		p.publishRealtime(ctx, "offer.updated", payload)
-	case "inventory.changed":
-		p.invalidateByPrefix(ctx, "offers:")
-		p.publishRealtime(ctx, "inventory.changed", payload)
 	case "order.status_changed":
 		p.invalidateByPrefix(ctx, "orders:")
 		p.publishRealtime(ctx, "order.status_changed", payload)
@@ -110,6 +107,8 @@ func (p *OutboxProcessor) handleEvent(ctx context.Context, eventType string, pay
 		p.invalidateByPrefix(ctx, "rare:")
 	case "manufacturer.quote_created", "manufacturer.request_created":
 		p.invalidateByPrefix(ctx, "manufacturer:")
+	case "campaign.join_requested":
+		p.invalidateByPrefix(ctx, "campaigns:")
 	default:
 		p.log.Info().Str("event_type", eventType).Msg("outbox event has no explicit handler")
 	}

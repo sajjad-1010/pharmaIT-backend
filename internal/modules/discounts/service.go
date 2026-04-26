@@ -14,6 +14,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const maxMessageLen = 2000
+
 type Service struct {
 	db     *gorm.DB
 	outbox *outbox.Service
@@ -125,4 +127,102 @@ func (s *Service) ListCampaigns(ctx context.Context, wholesalerID uuid.UUID) ([]
 		return nil, appErr.Internal("failed to list campaigns")
 	}
 	return rows, nil
+}
+
+type SendJoinRequestInput struct {
+	CampaignID uuid.UUID
+	PharmacyID uuid.UUID
+	Message    string
+}
+
+func (s *Service) SendJoinRequest(ctx context.Context, input SendJoinRequestInput) (*model.CampaignJoinRequest, error) {
+	message := strings.TrimSpace(input.Message)
+	if message == "" {
+		return nil, appErr.BadRequest("INVALID_MESSAGE", "message is required", nil)
+	}
+	if len([]rune(message)) > maxMessageLen {
+		return nil, appErr.BadRequest("MESSAGE_TOO_LONG", "message must be at most 2000 characters", nil)
+	}
+
+	var campaign model.DiscountCampaign
+	if err := s.db.WithContext(ctx).First(&campaign, "id = ?", input.CampaignID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, appErr.NotFound("CAMPAIGN_NOT_FOUND", "campaign not found")
+		}
+		return nil, appErr.Internal("failed to query campaign")
+	}
+
+	row := &model.CampaignJoinRequest{
+		ID:         uuid.New(),
+		CampaignID: input.CampaignID,
+		PharmacyID: input.PharmacyID,
+		Message:    message,
+	}
+
+	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(row).Error; err != nil {
+			if strings.Contains(strings.ToLower(err.Error()), "duplicate key") {
+				return appErr.BadRequest("ALREADY_REQUESTED", "you have already sent a join request for this campaign", nil)
+			}
+			return appErr.Internal("failed to create join request")
+		}
+		outboxRow, err := s.outbox.Write(ctx, tx, outbox.Event{
+			Type: "campaign.join_requested",
+			Payload: map[string]interface{}{
+				"campaign_id":  campaign.ID,
+				"wholesaler_id": campaign.WholesalerID,
+				"pharmacy_id":  input.PharmacyID,
+				"request_id":   row.ID,
+			},
+		})
+		if err != nil {
+			return err
+		}
+		return s.outbox.Notify(ctx, tx, outboxRow.ID)
+	}); err != nil {
+		return nil, err
+	}
+
+	return row, nil
+}
+
+type JoinRequestItem struct {
+	ID         uuid.UUID `json:"id"`
+	CampaignID uuid.UUID `json:"campaign_id"`
+	PharmacyID uuid.UUID `json:"pharmacy_id"`
+	Message    string    `json:"message"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+func (s *Service) ListJoinRequests(ctx context.Context, wholesalerID, campaignID uuid.UUID) ([]JoinRequestItem, error) {
+	var campaign model.DiscountCampaign
+	if err := s.db.WithContext(ctx).First(&campaign, "id = ?", campaignID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, appErr.NotFound("CAMPAIGN_NOT_FOUND", "campaign not found")
+		}
+		return nil, appErr.Internal("failed to query campaign")
+	}
+	if campaign.WholesalerID != wholesalerID {
+		return nil, appErr.Forbidden("FORBIDDEN", "campaign does not belong to wholesaler")
+	}
+
+	var rows []model.CampaignJoinRequest
+	if err := s.db.WithContext(ctx).
+		Where("campaign_id = ?", campaignID).
+		Order("created_at DESC").
+		Find(&rows).Error; err != nil {
+		return nil, appErr.Internal("failed to list join requests")
+	}
+
+	items := make([]JoinRequestItem, 0, len(rows))
+	for _, r := range rows {
+		items = append(items, JoinRequestItem{
+			ID:         r.ID,
+			CampaignID: r.CampaignID,
+			PharmacyID: r.PharmacyID,
+			Message:    r.Message,
+			CreatedAt:  r.CreatedAt,
+		})
+	}
+	return items, nil
 }

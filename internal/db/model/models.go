@@ -98,16 +98,6 @@ const (
 	OutboxStatusFailed    OutboxStatus = "FAILED"
 )
 
-type InventoryMovementType string
-
-const (
-	InventoryMovementTypeIn       InventoryMovementType = "IN"
-	InventoryMovementTypeOut      InventoryMovementType = "OUT"
-	InventoryMovementTypeReserved InventoryMovementType = "RESERVED"
-	InventoryMovementTypeReleased InventoryMovementType = "RELEASED"
-	InventoryMovementTypeAdjust   InventoryMovementType = "ADJUST"
-)
-
 type MedicineCandidateStatus string
 
 const (
@@ -127,6 +117,7 @@ const (
 	NotificationKindRareBidSelected            NotificationKind = "RARE_BID_SELECTED"
 	NotificationKindManufacturerRequestCreated NotificationKind = "MANUFACTURER_REQUEST_CREATED"
 	NotificationKindManufacturerQuoteCreated   NotificationKind = "MANUFACTURER_QUOTE_CREATED"
+	NotificationKindCampaignJoinRequest        NotificationKind = "CAMPAIGN_JOIN_REQUEST"
 )
 
 type NotificationDevicePlatform string
@@ -233,7 +224,6 @@ type WholesalerOffer struct {
 	Name         string          `gorm:"type:text;not null"`
 	Producer     *string         `gorm:"type:text"`
 	DisplayPrice decimal.Decimal `gorm:"type:numeric(18,4);not null"`
-	AvailableQty int             `gorm:"type:int;not null;default:0"`
 	ExpiryDate   *time.Time      `gorm:"type:date"`
 	IsActive     bool            `gorm:"type:boolean;not null;default:true;index:idx_offers_wh_active,priority:2"`
 	CreatedAt    time.Time       `gorm:"type:timestamptz;not null;default:now()"`
@@ -347,6 +337,16 @@ type DiscountItem struct {
 
 func (DiscountItem) TableName() string { return "discount_items" }
 
+type CampaignJoinRequest struct {
+	ID         uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
+	CampaignID uuid.UUID `gorm:"type:uuid;not null;index:idx_campaign_join_requests_campaign,priority:1"`
+	PharmacyID uuid.UUID `gorm:"type:uuid;not null;index:idx_campaign_join_requests_pharmacy,priority:1"`
+	Message    string    `gorm:"type:text;not null"`
+	CreatedAt  time.Time `gorm:"type:timestamptz;not null;default:now();index:idx_campaign_join_requests_campaign,priority:2;sort:desc;index:idx_campaign_join_requests_pharmacy,priority:2;sort:desc"`
+}
+
+func (CampaignJoinRequest) TableName() string { return "campaign_join_requests" }
+
 type Payment struct {
 	ID            uuid.UUID       `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
 	UserID        uuid.UUID       `gorm:"type:uuid;not null;index:idx_payments_user_created,priority:1"`
@@ -378,19 +378,6 @@ type Outbox struct {
 }
 
 func (Outbox) TableName() string { return "outbox" }
-
-type InventoryMovement struct {
-	ID           uuid.UUID             `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
-	WholesalerID uuid.UUID             `gorm:"type:uuid;not null;index:idx_inventory_wh_offer_created,priority:1"`
-	OfferID      uuid.UUID             `gorm:"type:uuid;not null;index:idx_inventory_wh_offer_created,priority:2"`
-	Type         InventoryMovementType `gorm:"type:inventory_movement_type;not null"`
-	Qty          int                   `gorm:"type:int;not null"`
-	RefType      *string               `gorm:"type:text"`
-	RefID        *uuid.UUID            `gorm:"type:uuid"`
-	CreatedAt    time.Time             `gorm:"type:timestamptz;not null;default:now();index:idx_inventory_wh_offer_created,priority:3;sort:desc"`
-}
-
-func (InventoryMovement) TableName() string { return "inventory_movements" }
 
 type NotificationPreference struct {
 	UserID                     uuid.UUID `gorm:"type:uuid;primaryKey"`

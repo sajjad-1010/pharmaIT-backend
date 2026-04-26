@@ -21,11 +21,15 @@ func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
 }
 
-func (h *Handler) RegisterRoutes(api fiber.Router, authMW fiber.Handler, wholesalerOnly fiber.Handler) {
-	protected := api.Group("/discount-campaigns", authMW, wholesalerOnly)
-	protected.Post("/", h.createCampaign)
-	protected.Get("/", h.listCampaigns)
-	protected.Post("/:id/items", h.addItem)
+func (h *Handler) RegisterRoutes(api fiber.Router, authMW fiber.Handler, wholesalerOnly fiber.Handler, pharmacyOnly fiber.Handler) {
+	wholesaler := api.Group("/discount-campaigns", authMW, wholesalerOnly)
+	wholesaler.Post("/", h.createCampaign)
+	wholesaler.Get("/", h.listCampaigns)
+	wholesaler.Post("/:id/items", h.addItem)
+	wholesaler.Get("/:id/join-requests", h.listJoinRequests)
+
+	pharmacy := api.Group("/discount-campaigns", authMW, pharmacyOnly)
+	pharmacy.Post("/:id/join-requests", h.sendJoinRequest)
 }
 
 // createCampaign godoc
@@ -151,6 +155,81 @@ func (h *Handler) listCampaigns(c *fiber.Ctx) error {
 		return response.Fail(c, err)
 	}
 	return response.JSON(c, fiber.StatusOK, fiber.Map{"items": rows})
+}
+
+// sendJoinRequest godoc
+// @Summary Send join request for a discount campaign (Pharmacy)
+// @Tags discounts
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "campaign id"
+// @Param request body object true "join request payload"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} response.ErrorEnvelope
+// @Failure 401 {object} response.ErrorEnvelope
+// @Router /discount-campaigns/{id}/join-requests [post]
+func (h *Handler) sendJoinRequest(c *fiber.Ctx) error {
+	uidRaw, err := middleware.MustCurrentUserID(c)
+	if err != nil {
+		return response.Fail(c, appErr.Unauthorized("UNAUTHORIZED", "missing auth context"))
+	}
+	pharmacyID, err := uuid.Parse(uidRaw)
+	if err != nil {
+		return response.Fail(c, appErr.Unauthorized("UNAUTHORIZED", "invalid user id"))
+	}
+	campaignID, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return response.Fail(c, appErr.BadRequest("INVALID_CAMPAIGN_ID", "invalid campaign id", nil))
+	}
+
+	var req struct {
+		Message string `json:"message"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return response.Fail(c, appErr.BadRequest("INVALID_BODY", "invalid request body", nil))
+	}
+
+	out, err := h.svc.SendJoinRequest(c.UserContext(), SendJoinRequestInput{
+		CampaignID: campaignID,
+		PharmacyID: pharmacyID,
+		Message:    req.Message,
+	})
+	if err != nil {
+		return response.Fail(c, err)
+	}
+	return response.JSON(c, fiber.StatusCreated, out)
+}
+
+// listJoinRequests godoc
+// @Summary List join requests for a campaign (Wholesaler)
+// @Tags discounts
+// @Security BearerAuth
+// @Produce json
+// @Param id path string true "campaign id"
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} response.ErrorEnvelope
+// @Failure 403 {object} response.ErrorEnvelope
+// @Router /discount-campaigns/{id}/join-requests [get]
+func (h *Handler) listJoinRequests(c *fiber.Ctx) error {
+	uidRaw, err := middleware.MustCurrentUserID(c)
+	if err != nil {
+		return response.Fail(c, appErr.Unauthorized("UNAUTHORIZED", "missing auth context"))
+	}
+	wholesalerID, err := uuid.Parse(uidRaw)
+	if err != nil {
+		return response.Fail(c, appErr.Unauthorized("UNAUTHORIZED", "invalid user id"))
+	}
+	campaignID, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return response.Fail(c, appErr.BadRequest("INVALID_CAMPAIGN_ID", "invalid campaign id", nil))
+	}
+
+	items, err := h.svc.ListJoinRequests(c.UserContext(), wholesalerID, campaignID)
+	if err != nil {
+		return response.Fail(c, err)
+	}
+	return response.JSON(c, fiber.StatusOK, fiber.Map{"items": items})
 }
 
 func parseOptionalRFC3339(input *string) (*time.Time, error) {

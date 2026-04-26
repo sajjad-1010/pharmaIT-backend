@@ -16,12 +16,13 @@ import (
 	_ "pharmalink/server/internal/docs"
 	"pharmalink/server/internal/http/middleware"
 	"pharmalink/server/internal/logger"
-	"pharmalink/server/internal/modules/inventory"
+	"pharmalink/server/internal/modules/discounts"
 	"pharmalink/server/internal/modules/notifications"
 	"pharmalink/server/internal/modules/offers"
 	"pharmalink/server/internal/modules/orders"
 	"pharmalink/server/internal/modules/outbox"
 	"pharmalink/server/internal/modules/payments"
+	"pharmalink/server/internal/modules/rare"
 	"pharmalink/server/internal/modules/sse"
 	"pharmalink/server/internal/modules/users"
 	"pharmalink/server/internal/rbac"
@@ -77,14 +78,14 @@ func main() {
 	userSvc := users.NewService(dbConn, authSvc)
 	userHandler := users.NewHandler(userSvc)
 
-	inventorySvc := inventory.NewService(dbConn, outboxSvc)
-	inventoryHandler := inventory.NewHandler(inventorySvc)
-
 	offersSvc := offers.NewService(dbConn, redisClient, outboxSvc)
 	offersHandler := offers.NewHandler(offersSvc)
 
-	ordersSvc := orders.NewService(dbConn, inventorySvc, outboxSvc)
+	ordersSvc := orders.NewService(dbConn, outboxSvc)
 	ordersHandler := orders.NewHandler(ordersSvc)
+
+	rareSvc := rare.NewService(dbConn, outboxSvc)
+	rareHandler := rare.NewHandler(rareSvc)
 
 	paymentSvc := payments.NewService(dbConn, cfg.Payment, outboxSvc)
 	paymentHandler := payments.NewHandler(paymentSvc)
@@ -148,16 +149,21 @@ func main() {
 		URL: "/api/v1/docs/swagger.json",
 	}))
 
+	discountsSvc := discounts.NewService(dbConn, outboxSvc)
+	discountsHandler := discounts.NewHandler(discountsSvc)
+
 	authMW := middleware.JWTAuth(authSvc)
 	adminOnly := rbac.Allow(model.UserRoleAdmin)
 	wholesalerOnly := rbac.Allow(model.UserRoleWholesaler)
+	pharmacyOnly := rbac.Allow(model.UserRolePharmacy)
 
 	userHandler.RegisterRoutes(v1, authMW, adminOnly)
 	offersHandler.RegisterRoutes(v1, authMW, wholesalerOnly)
-	inventoryHandler.RegisterRoutes(v1, authMW, wholesalerOnly)
 	ordersHandler.RegisterRoutes(v1, authMW)
+	rareHandler.RegisterRoutes(v1, authMW)
 	paymentHandler.RegisterRoutes(v1, authMW)
 	notificationHandler.RegisterRoutes(v1, authMW)
+	discountsHandler.RegisterRoutes(v1, authMW, wholesalerOnly, pharmacyOnly)
 	sseHandler.RegisterRoutes(v1)
 
 	go func() {

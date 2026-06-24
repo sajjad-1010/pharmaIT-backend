@@ -8,3 +8,8 @@ coverage.out
 vendor/
 logs/
 
+# compiled binaries
+*.exe
+/api
+/worker
+
